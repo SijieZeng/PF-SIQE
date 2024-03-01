@@ -11,18 +11,18 @@ everyday before coding, update the changes from github repository
 If need to access the former version of codes
 - cd(pwd)
 - !git log % access the commit hash of all versions, pick the commit hash of the specified/target version 
-- !git checkout a1b2c3d % switch to the target version, reading/editing, if not commit to a new branch, the changes will lost 
+- !git checkout a1b2c3d % switch to the target version, reading/editing 
 - !git checkout main % return to the new version
 If I need to store the editing of the old specified version
 - cd(pwd)
 - !git log % % access the commit hash of all versions, pick the "commit hash: a1b2c3d" of the specified/target version 
 - !git checkout a1b2c3d % switch to the target version % you can read and editing the target version
 - !git checkout -b new-feature-from-old-version % after editing, stored the old version as a new branch
-- !git add .
-- !git commit -m "Added new feature based on old version" % select and commit
-- !git push -u origin new-feature-from-old-version
+- git add .
+- git commit -m "描述你在旧版本基础上所做的更改" % select and submit/commit
 
- 
+
+
 # ParticleFilter-simple-case
 - Project description:
 This is a simple case using particle filter, the language is matlab. 
