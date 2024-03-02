@@ -5,28 +5,28 @@ me = 0; % mean of gauss function
 sigma = 1; % standard deviation of gauss function
 a = 0;
 b = 1;
-[x, z, i, sysNoise, measureNoise] = generate(N, k, constantSpeed); % generating x z i
+[x, z, i, sysNoise, measureNoise] = generate(k, constantSpeed); % generating x z i
 pG = gauss(z, x, me, sigma); %  univariate
 pU = pUniform(x, a, b, k, constantSpeed);
 
 %% store parameters
-%parameters = table;
-%parameters.i = i';
-%parameters.x = x';
-%parameters.z = z';
-%parameters.sysNoise = sysNoise';
-%parameters.measureNoise = measureNoise';
-%parameters.pG = pG';
-%parameters.pU = pU';
-%% Store parameters in a table with cell arrays for matrices
 parameters = table;
-parameters.i = {i}; % i as a row vector, stored in a cell
-parameters.x = {x'}; % x matrix transposed to fit the table, stored in a cell
-parameters.z = {z'}; % z matrix transposed to fit the table, stored in a cell
-parameters.sysNoise = {sysNoise'}; % sysNoise matrix transposed, stored in a cell
-parameters.measureNoise = {measureNoise'}; % measureNoise matrix transposed, stored in a cell
-parameters.pG = {pG'}; % pG matrix transposed to fit the table, stored in a cell
-parameters.pU = {pU'}; % pU matrix transposed to fit the table, stored in a cell
+parameters.i = i';
+parameters.x = x';
+parameters.z = z';
+parameters.sysNoise = sysNoise';
+parameters.measureNoise = measureNoise';
+parameters.pG = pG';
+parameters.pU = pU';
+%% Store parameters in a table with cell arrays for matrices
+% parameters = table;
+% parameters.i = {i}; % i as a row vector, stored in a cell
+% parameters.x = {x'}; % x matrix transposed to fit the table, stored in a cell
+% parameters.z = {z'}; % z matrix transposed to fit the table, stored in a cell
+% parameters.sysNoise = {sysNoise'}; % sysNoise matrix transposed, stored in a cell
+% parameters.measureNoise = {measureNoise'}; % measureNoise matrix transposed, stored in a cell
+% parameters.pG = {pG'}; % pG matrix transposed to fit the table, stored in a cell
+% parameters.pU = {pU'}; % pU matrix transposed to fit the table, stored in a cell
 % access
 % 提取z矩阵:
 %zMatrix = parameters.z{1}; % 因为z存储在单元格中，使用{1}访问单元格内容
