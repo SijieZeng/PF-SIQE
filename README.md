@@ -1,4 +1,4 @@
-use "push" and "pull" to keep update between the github repository and matlab codes
+# use "push" and "pull" to keep update between the github repository and matlab codes
 everytime after making changes of the codes, please follow:
 - cd(pwd) % navigate to the MATLAB file
 - !git status % check where are the changes or using: system('git status');
@@ -22,7 +22,10 @@ If I need to store the editing of the old specified version
 - !git commit -m "Added new feature based on old version" % select and commit
 - !git push -u origin new-feature-from-old-version
 
- 
+# configure the '.gitignore' file
+方法1:在本地repository文件夹：快捷键 Command + Shift + . 来临时查看隐藏文件。然后双击打开编辑，保存，使用terminal进行commit更改
+方法2:在matlab command window里：edit .gitignore 即可。
+
 # ParticleFilter-simple-case
 - Project description:
 This is a simple case using particle filter, the language is matlab. 
