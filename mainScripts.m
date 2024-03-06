@@ -1,13 +1,20 @@
+% initialization
 N = 100;
-k = 10; % timestep
+k = 100; % timestep
 constantSpeed = 10;
 me = 0; % mean of gauss function    
 sigma = 1; % standard deviation of gauss function
 a = 0;
 b = 1;
-[x, z, i, sysNoise, measureNoise] = generate(k, constantSpeed); % generating x z i
-pG = gauss(z, x, me, sigma); %  univariate
-pU = pUniform(x, a, b, k, constantSpeed);
+
+%% % 生成真实位置和测量值
+[x, z, i, sysNoise, measureNoise] = generate(k, constantSpeed);
+
+% 调用 Particle Filter
+[x_est, particles, weights] = ParticleFilter(z, constantSpeed, N, k, me, sigma, a, b);
+
+% 绘制结果
+plotResults(x, z, x_est, i);
 
 %% store parameters
 parameters = table;
@@ -16,8 +23,8 @@ parameters.x = x';
 parameters.z = z';
 parameters.sysNoise = sysNoise';
 parameters.measureNoise = measureNoise';
-parameters.pG = pG';
-parameters.pU = pU';
+%parameters.pG = pG';
+%parameters.pU = pU';
 %% Store parameters in a table with cell arrays for matrices
 % parameters = table;
 % parameters.i = {i}; % i as a row vector, stored in a cell

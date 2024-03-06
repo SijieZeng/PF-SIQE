@@ -9,6 +9,7 @@ everytime after making changes of the codes, please follow:
 everyday before coding, update the changes from github repository
 - !git pull origin main % if rebase
 - !git pull % if merge
+- !git config --get pull.rebase % to check rebase or merge, true = rebase
 % always rebase: !git config --global pull.rebase true
 % always merge: !git config --global pull.rebase false
 % private project: choose rebase, more clean
