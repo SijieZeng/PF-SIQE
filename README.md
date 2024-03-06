@@ -7,7 +7,11 @@ everytime after making changes of the codes, please follow:
 - !git commit -m "描述你的更改" % commit = submit 
 - !git push % push to the github repository
 everyday before coding, update the changes from github repository
-- !git pull
+- !git pull origin main % if rebase
+- !git pull % if merge
+% always rebase: !git config --global pull.rebase true
+% always merge: !git config --global pull.rebase false
+% private project: choose rebase, more clean
 If need to access the former version of codes
 - cd(pwd)
 - !git log % access the commit hash of all versions, pick the commit hash of the specified/target version 
