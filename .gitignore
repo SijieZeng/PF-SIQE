@@ -1,0 +1,17 @@
+# macOS 系统文件
+.DS_Store
+
+# MATLAB 自动生成的文件
+*.asv
+*.mex*
+*.mat
+*.fig
+
+# 编辑器/IDE 产生的文件
+*.sublime-workspace
+*.idea/
+.vscode/
+
+# 构建产物
+bin/
+build/
