@@ -27,6 +27,44 @@ If I need to store the editing of the old specified version
 - !git commit -m "Added new feature based on old version" % select and commit
 - !git push -u origin new-feature-from-old-version
 
+# 创建new branch储存不同的scenarios
+- !git checkout main
+- !git checkout -b new-scenario % 创建
+- !git add .
+- !git commit -m "Added new scenario"
+- !git push origin new-scenario
+
+# 为new branch改名
+- !git branch
+- !git checkout new-scenario
+- !git branch -m new-scenario-name
+- !git push origin -u new-scenario-name
+!git push origin --delete new-scenario
+
+# 如何在不同的branch之间来回切换
+- !git branch
+- !git checkout main
+-!git add .
+- !git commit -m "commit message"
+- !git push
+
+- !git checkout new-scenario
+- !git add .
+- !git commit -m "commit message"
+- !git push
+
+# 如何在开始改变new branch前把main的内容同步至new branch
+- !git checkout new-scenario-extend-state-to-3D
+- !git merge main
+- !git add .
+- !git commit -m "Merge changes from main"
+- !git push origin new-scenario-extend-state-to-3D % 有可能会有冲突，git先帮忙，不行的话手动解决
+
+# 删除一个分支：本地&远程
+- !git branch -d new-scenario-extend-state-to-3D
+- !git push origin --delete new-scenario-extend-state-to-3D
+
+
 # configure the '.gitignore' file
 方法1:在本地repository文件夹：快捷键 Command + Shift + . 来临时查看隐藏文件。然后双击打开编辑，保存，使用terminal进行commit更改
 方法2:在matlab command window里：edit .gitignore 即可。
