@@ -1,5 +1,5 @@
+# Matlab Git Integration Guide
 # beginning: download the git on https://git-scm.com/
-
 - `!git --version` % confirm that you successfully installed git on the computer
 - % If unsuccessfully, install it
 - % you can localize where the git install, usually:
