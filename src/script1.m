@@ -11,13 +11,13 @@ params = struct();
 % Simulation parameters
 params.dt = 1;  % time step (s)
 params.num_iterations = 100; % Number of time steps
-params.num_vehicles = 10; % Number of vehicles 
+params.num_vehicles = 5; % Number of vehicles 
 
 % generate_traffic_signal_states
 params.red_time = 20;   % Red light duration (s)
 params.yellow_time = 3.5; % Yellow light duration (s)
 params.green_time = 20; % Green light duration (s)
-params.d_stop_line = 300; % Stop line position (m)
+params.d_stop_line = 1000; % Stop line position (m)
 
 % decision making
 params.D_h = 150;       % Decision distance in meters
@@ -37,7 +37,7 @@ params.D_undecided = 3;
 params.v_desired = 15;  % desired speed (m/s)
 params.a_max = 1.0;     % maximum acceleration (m/s^2)
 params.b = 1.5;         % comfortable deceleration (m/s^2)
-params.s0 = 2.0;        % minimum gap (m)
+params.s0 = 7.0;        % minimum gap (m), take into account the vehicle length of 5m
 params.T = 1.0;         % safe time headway (s)
 params.delta = 4;       % acceleration exponent
 
@@ -57,8 +57,7 @@ params.accuracy_loop2 = 0.9;
 % Floating sensors
 params.sigma_GPS = 5;
 
-disp('Contents of params:');
-disp(params);
+
 
 % Set SHOW_TIMING_OUTPUT
 SHOW_TIMING_OUTPUT = false; % Set to true if you want to see timing output
