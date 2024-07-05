@@ -20,7 +20,7 @@ params.green_time = 20; % Green light duration (s)
 params.d_stop_line = 1000; % Stop line position (m)
 
 % decision making
-params.D_h = 150;       % Decision distance in meters
+params.D_h = params.d_stop_line - 150;       % Decision distance in meters
 params.T_reaction = 1.0;% Reaction time in seconds
 params.p_stop = 0.5;    % Probability of stopping in the dilemma zone
 params.b_max = 3.0; 
@@ -31,7 +31,7 @@ params.T_discrete = 1.0;
 params.a = 1.0;
 params.D_stop = 1;  % Assuming 1 represents D_stop
 params.D_go = 2;  % Assuming 2 represents D_go
-params.D_undecided = 3;
+params.D_undecided = 3; % Assuming 2 represents D_undecided
 
 % IDM parameters
 params.v_desired = 15;  % desired speed (m/s)
@@ -138,6 +138,28 @@ for i = 1:params.num_vehicles
     decisions = squeeze(state(:, i, 4));
     % Map decision values to numeric values
     decision_map = containers.Map({params.D_stop, params.D_go, params.D_undecided}, {1, 2, 3});
+    unique_decisions = unique(decisions);
+    disp('Unique decision values:');
+    disp(unique_decisions);
+    disp('decision_map keys:');
+    disp(keys(decision_map));
+    
+    % create a new mapping to include the 0 value
+    extended_decision_map = containers.Map('KeyType', 'double', 'ValueType', 'double');
+    extended_decision_map(0) = 0;
+    extended_decision_map(params.D_stop) = 1;
+    extended_decision_map(params.D_go) = 2;
+    extended_decision_map(params.D_undecided) = 3;
+    
+    mapped_decisions = zeros(size(decisions));
+    for idx = 1:numel(decisions)
+        if extended_decision_map.isKey(decisions(idx))
+        mapped_decisions(idx) = extended_decision_map(decisions(idx));
+        else
+            warning('Unknown decision value: %d', decisions(idx));
+            mapped_decisions(idx) = 0; 
+        end
+    end
     mapped_decisions = cellfun(@(x) decision_map(x), num2cell(decisions));
     plot(1:params.num_iterations, mapped_decisions, 'Color', colors(i, :));
 end

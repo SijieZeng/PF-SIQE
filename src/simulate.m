@@ -16,6 +16,7 @@ function [state, S, total_cpu_times] = simulate(params, SHOW_TIMING_OUTPUT)
     % Initialize state matrix
     % state: [d, v, a, D, lane]
     state = zeros(params.num_iterations, params.num_vehicles, 5);
+    state(:, :, 4) = params.D_undecided;
     num_vehicles = params.num_vehicles;
     num_iterations = params.num_iterations;
 
@@ -85,10 +86,13 @@ function [state, S, total_cpu_times] = simulate(params, SHOW_TIMING_OUTPUT)
             a_decision_next = StateTransition.traffic_light_decision_model(state(k,i,4), state(k,i,2), state(k,i,1), params);
             total_cpu_times.a_decision_next = total_cpu_times.a_decision_next + (cputime - cpu_start);
 
+            % Extract current vehicle speed
+            v = state(k,i,2);
+
             % Calculate a_next
             cpu_start = cputime;
             fprintf('Value of v: %f\n', v);
-            a_next(i) = StateTransition.acceleration_next(a_IDM_next, a_decision_next, params, v(i));
+            a_next(i) = StateTransition.acceleration_next(a_IDM_next, a_decision_next, params, v);
             total_cpu_times.a_next = total_cpu_times.a_next + (cputime - cpu_start);
 
             % Calculate next state

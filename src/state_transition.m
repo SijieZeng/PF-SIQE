@@ -171,16 +171,20 @@ end
 function T_elapsed_next = calculate_T_elapsed_next(T_elapsed, S, S_next, params)
     yellow_time = params.yellow_time; % Yellow light duration
     dt = params.dt; % Time step
+    num_vehicles = params.num_vehicles; % Number of vehicles
+    T_elapsed_next = zeros(1, num_vehicles); % Initialize T_elapsed_next as an array
 
-    if S == "yellow" && S_next == "yellow"
-        % During yellow light
-        T_elapsed_next = max(T_elapsed - dt, 0);
-    elseif S ~= "yellow" && S_next == "yellow"
-        % Start of yellow light
-        T_elapsed_next = yellow_time;
-    else
-        % End of yellow light or not in yellow light
-        T_elapsed_next = 0;
+    for i = 1:num_vehicles
+        if S == "yellow" && S_next == "yellow"
+            % During yellow light
+            T_elapsed_next(i) = max(T_elapsed(i) - dt, 0);
+        elseif S ~= "yellow" && S_next == "yellow"
+            % Start of yellow light
+            T_elapsed_next(i) = yellow_time;
+        else
+            % End of yellow light or not in yellow light
+            T_elapsed_next(i) = 0;
+        end
     end
 end
 
@@ -213,39 +217,43 @@ function D_next = decision_making(d_k, d_next, v_k, v_next, S_k, S_next, T_elaps
     d_0 = params.d_0;
 
      % Initialize output
-    D_next = zeros(1, num_vehicles);
+    D_next = repmat(params.D_undecided, 1, num_vehicles);
 
     for i = 1:num_vehicles
         if d_0 <= d_next(i) && d_next(i) <= D_h
             D_next(i) = params.D_undecided; % D_undecided
-        else
+        elseif D_h <= d_next(i) && d_next(i) <= d_stop_line
             if S_next == "red"
-                if D_h <= d_next(i) && d_next(i) <= d_stop_line
-                    D_next(i) = params.D_stop; % D_stop
-                end
+                D_next(i) = params.D_stop; % D_stop
             elseif S_next == "green"
-                if D_h <= d_next(i) && d_next(i) <= d_stop_line
-                    D_next(i) = params.D_go; % D_go
-                end
+                D_next(i) = params.D_go; % D_go
             elseif S_next == "yellow"
                 d_a_next = T_reaction * v_next(i) + (v_next(i)^2) / (2 * b);
+                % Debugging information
+                fprintf('Debug: T_elapsed_next = %s\n', mat2str(T_elapsed_next));
+                fprintf('Debug: v_next = %s\n', mat2str(v_next));
+                fprintf('Debug: i = %d\n', i);
                 d_b_next = (T_yellow - T_elapsed_next(i)) * v_next(i);
 
-                if D_h <= d_next(i) && d_next(i) <= d_b_next
+                if d_next(i) <= d_b_next
                     D_next(i) = params.D_stop; % D_stop
-                elseif d_a_next <= d_next(i) && d_next(i) <= d_stop_line
+                elseif d_a_next <= d_next(i) 
                     D_next(i) = params.D_go; % D_go
-                elseif d_b_next < d_next(i) && d_next(i) < d_a_next
-                    if D_k(i) == 0 % D_undecided
+                else % d_b_next < d_next(i) && d_next(i) < d_a_next
+                    if D_k(i) == params.D_undecided % D_undecided
                         r = rand();
                         if r < p
                             D_next(i) = params.D_stop; % D_stop
                         else
                             D_next(i) = params.D_go; % D_go
                         end
+                    else
+                        D_next(i) = D_k(i);
                     end
                 end
             end
+        else
+            D_next(i) = params.D_go;
         end
 
         % Maintain previous decision if already made during yellow light
