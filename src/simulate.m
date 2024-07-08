@@ -17,16 +17,25 @@ function [state, S, total_cpu_times] = simulate(params, SHOW_TIMING_OUTPUT)
     % state: [d, v, a, D, lane]
     state = zeros(params.num_iterations, params.num_vehicles, 5);
     state(:, :, 4) = params.D_undecided;
+    state(:, :, 5) = params.lane;
     num_vehicles = params.num_vehicles;
     num_iterations = params.num_iterations;
+    initial_offset = params.d_0; % meters
 
     % Initialize first state
     initial_spacing = max(params.s0, rand() * 10); % meters
     for i = 1:num_vehicles
-        initial_position = max(params.d_stop_line - i * initial_spacing, 0);
-        state(1, i, :) = [initial_position, params.v_desired, 0, params.D_undecided, 1];
+        state(1, i, 1) = initial_offset + (params.num_vehicles - i) * initial_spacing; % Position
+        state(1, i, 2) = params.v_desired; % Velocity
+        state(1, i, 3) = 0; % Acceleration
     end
 
+    % After initialization, sorting is not necessary if we initialized correctly
+    % But we can keep it as a safety measure
+    [~, order] = sort(state(1, :, 1), 'descend');
+    state(1, :, :) = state(1, order, :);
+    
+     
     % Generate traffic signal states
     StateTransition = state_transition();
     S = StateTransition.generate_traffic_signal_states(params);
@@ -100,12 +109,48 @@ function [state, S, total_cpu_times] = simulate(params, SHOW_TIMING_OUTPUT)
             next_state(i,:) = StateTransition.nextState(state(k,i,:), params);
             next_state(i,3) = a_next(i);  % Update acceleration
             total_cpu_times.next_state = total_cpu_times.next_state + (cputime - cpu_start);
+
+            % Calculate tentative next state
+            tentative_next_state = StateTransition.nextState(state(k,i,:), params);
+            tentative_next_state(3) = a_next(i);  % Update acceleration
+            
+            % Store tentative next state
+            next_state(i,:) = tentative_next_state;
         end
 
         % Check for invalid next_state
         if any(isnan(next_state(:))) || any(isinf(next_state(:)))
             error('Invalid next_state at iteration %d', k);
         end
+
+        % Apply constraints
+        min_distance = params.s0;
+
+        for i = num_vehicles:-1:2
+            % Check and correct overtaking situations
+            if next_state(i, 1) > next_state(i-1, 1)
+                % If overtaking occurs, adjust the position of the rear vehicle to the rear of the front vehicle                state(k+1, i, 1) = state(k+1, i-1, 1) - min_distance;
+                next_state(i, 1) = next_state(i-1, 1) - min_distance;
+                warning('Prevented overtaking at time step %d between vehicles %d and %d', k+1, i-1, i);
+            end
+
+            % Check and correct minimum safety distance
+            distance = next_state(i-1, 1) - next_state(i, 1);
+            if distance < min_distance
+                % If the distance is less than the minimum safe distance, adjust the position of the rear vehicle
+                next_state(i, 1) = next_state(i-1, 1) - min_distance;
+                warning('Adjusted position to maintain minimum distance at time step %d between vehicles %d and %d', k+1, i-1, i);
+            end
+            % Update velocity to reflect position adjustments
+            next_state(i, 2) = (next_state(i, 1) - state(k, i, 1)) / params.dt;
+            
+            % Update acceleration 
+            next_state(i, 3) = (next_state(i, 2) - state(k, i, 2)) / params.dt;
+        end
+
+         % Update state matrix with constrained next_state
+        state(k+1,:,:) = next_state;
+        
 
         % Calculate T_elapsed_next
         cpu_start = cputime;
@@ -124,10 +169,6 @@ function [state, S, total_cpu_times] = simulate(params, SHOW_TIMING_OUTPUT)
                                                  S(k), S(k+1), T_elapsed(k,:), T_elapsed_next, state(k,:,4), params);
         total_cpu_times.D_next = total_cpu_times.D_next + (cputime - cpu_start);
 
-        % Update state matrix
-        state(k+1,:,:) = next_state;
-        state(k+1,:,4) = D_next;
-        
 
         % Update T_elapsed
         T_elapsed(k+1,:) = T_elapsed_next;
@@ -138,6 +179,16 @@ function [state, S, total_cpu_times] = simulate(params, SHOW_TIMING_OUTPUT)
         % Check for invalid T_elapsed
         if any(isnan(T_elapsed(k+1,:))) || any(isinf(T_elapsed(k+1,:)))
             error('Invalid T_elapsed at iteration %d', k+1);
+        end
+
+         % Final safety check 
+        for i = 2:num_vehicles
+            if state(k+1, i, 1) > state(k+1, i-1, 1)
+                warning('Unexpected vehicle order violation at time step %d between vehicles %d and %d', k+1, i-1, i);
+            end
+            if (state(k+1, i-1, 1) - state(k+1, i, 1)) < min_distance
+                warning('Unexpected minimum distance violation at time step %d between vehicles %d and %d', k+1, i-1, i);
+            end
         end
     end
 

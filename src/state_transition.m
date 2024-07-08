@@ -13,6 +13,7 @@ function StateTransition = state_transition()
     StateTransition.state_transition_probability = @state_transition_probability;
     %StateTransition.groundtruth = @groundtruth;
 end
+%% nextState
 
 function next_state = nextState(state, params)
     d = state(1); % Longitudinal Position (m)
@@ -29,6 +30,9 @@ function next_state = nextState(state, params)
     end
 
     v = max(0, v + a * T);
+
+
+
     d = d + v * T + 0.5 * a * T^2;
 
     if isnan(d) || isnan(v) || isinf(d) || isinf(v)
@@ -37,6 +41,7 @@ function next_state = nextState(state, params)
 
     next_state = [d, v, a, D, lane];
 end
+%% calculate_vehicle_relations
 
 function [delta_v, s] = calculate_vehicle_relations(d, v, params)
     if ~isstruct(params)
@@ -84,6 +89,7 @@ function [delta_v, s] = calculate_vehicle_relations(d, v, params)
         error('s values less than s0 detected: %s', mat2str(s(2:end)));
     end
 end
+%% intelligent_driver_model
 
 function a_IDM_next = intelligent_driver_model(v, delta_v, s, params)
   % Intelligent Driver Model (IDM) function
@@ -116,6 +122,7 @@ function a_IDM_next = intelligent_driver_model(v, delta_v, s, params)
         error('Invalid acceleration detected. a_IDM_next: %f', a_IDM_next);
     end
 end
+%% generate_traffic_signal_states
 
 function S = generate_traffic_signal_states(params)
     num_iterations = params.num_iterations;
@@ -137,6 +144,7 @@ function S = generate_traffic_signal_states(params)
         end
     end
 end
+%% update_elapsed_time
 
 function T_elapsed = update_elapsed_time(S, params)
     % Update elapsed yellow light time for each vehicle
@@ -167,6 +175,7 @@ function T_elapsed = update_elapsed_time(S, params)
         end
     end
 end
+%% calculate_T_elapsed_next
 
 function T_elapsed_next = calculate_T_elapsed_next(T_elapsed, S, S_next, params)
     yellow_time = params.yellow_time; % Yellow light duration
@@ -187,7 +196,7 @@ function T_elapsed_next = calculate_T_elapsed_next(T_elapsed, S, S_next, params)
         end
     end
 end
-
+%% decision_making
 
 function D_next = decision_making(d_k, d_next, v_k, v_next, S_k, S_next, T_elapsed, T_elapsed_next, D_k, params)
 % Decision-making function based on current state and signal state
@@ -269,6 +278,7 @@ function D_next = decision_making(d_k, d_next, v_k, v_next, S_k, S_next, T_elaps
         end
     end
 end
+%% traffic_light_decision_model
 
 function a_decision_next = traffic_light_decision_model(D_k, v_k, d_k, params)
     % Input:
@@ -294,6 +304,7 @@ function a_decision_next = traffic_light_decision_model(D_k, v_k, d_k, params)
         a_decision_next = a_prime * (1 - (v_k / v_desired)^2);
     end
 end
+%% acceleration_next
 
 function a_next = acceleration_next(a_IDM_next, a_decision_next, params, v_k)
     n_a = params.n_a;
@@ -324,6 +335,7 @@ function p = acceleration_probability(a_next, params, v_k)
         p = 0;
     end
 end
+%% decision_probability
 
 function p = decision_probability(D_k, D_next, S_next, d_next, d_b_next, d_a_next, params)
     % Inputs:
@@ -358,6 +370,7 @@ function p = decision_probability(D_k, D_next, S_next, d_next, d_b_next, d_a_nex
         error('Invalid probability calculated: %f', p);
     end
 end
+%% state_transition_probability
 
 function p_joint = state_transition_probability(~, a_next, D_k, D_next, S_next, d_next, d_b_next, d_a_next, params)
     % Inputs:

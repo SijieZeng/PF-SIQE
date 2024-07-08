@@ -17,7 +17,8 @@ params.num_vehicles = 5; % Number of vehicles
 params.red_time = 20;   % Red light duration (s)
 params.yellow_time = 3.5; % Yellow light duration (s)
 params.green_time = 20; % Green light duration (s)
-params.d_stop_line = 1000; % Stop line position (m)
+params.d_stop_line = 300; % Stop line position (m)               
+params.lane = 1;
 
 % decision making
 params.D_h = params.d_stop_line - 150;       % Decision distance in meters
@@ -69,46 +70,47 @@ SHOW_TIMING_OUTPUT = false; % Set to true if you want to see timing output
 cpu_start_graphics = cputime;
 
 % Visualization and store the figures
-folder_path = '/Users/celine/Documents/MATLAB/PF-SIQE_Msc_thesis/results';
+%folder_path = '/Users/celine/Documents/MATLAB/PF-SIQE_Msc_thesis/results';
+folder_path = 'C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\results';
 
-% Plot traffic light state
-figure(1);
-hold on;
-d_stop_line = params.d_stop_line;
-num_iterations = params.num_iterations;
 
-for k = 1:num_iterations
-    if S(k) == "red"
-        stairs([k k+1], [d_stop_line d_stop_line], 'r', 'LineWidth', 2);
-    elseif S(k) == "yellow"
-        stairs([k k+1], [d_stop_line d_stop_line], 'y', 'LineWidth', 2);
-    elseif S(k) == "green"
-        stairs([k k+1], [d_stop_line d_stop_line], 'g', 'LineWidth', 2);
-    end
-end
-
-xlabel('Time Step');
-ylabel('Position (m)');
-title('Traffic Signal States Over Time');
-ylim([0 d_stop_line + 50]);
-hold off;
 
 % Position
-figure(2);
+figure(1);
 hold on;
 colors = lines(params.num_vehicles);
 for i = 1:params.num_vehicles
     plot(1:params.num_iterations, squeeze(state(:, i, 1)), 'Color', colors(i, :));
 end
-plot([1 params.num_iterations], [params.d_stop_line params.d_stop_line], 'k--', 'LineWidth', 2);
+
+% Plot Dh
+plot([1 params.num_iterations], [params.D_h params.D_h], 'k--', 'LineWidth', 2);
+
+% Plot traffic light state on the stop line
+for k = 1:params.num_iterations
+    if S(k) == "red"
+        plot(k, params.d_stop_line, 'r.', 'MarkerSize', 10);
+    elseif S(k) == "yellow"
+        plot(k, params.d_stop_line, 'y.', 'MarkerSize', 10);
+    elseif S(k) == "green"
+        plot(k, params.d_stop_line, 'g.', 'MarkerSize', 10);
+    end
+end
+
 xlabel('Time Step');
 ylabel('Position (m)');
-title('Vehicle Position Over Time');
-legend(arrayfun(@(x) sprintf('Vehicle %d', x), 1:params.num_vehicles, 'UniformOutput', false));
+title('Vehicle Position and Traffic Signal States Over Time');
+legend([arrayfun(@(x) sprintf('Vehicle %d', x), 1:params.num_vehicles, 'UniformOutput', false), 'D_h', 'Traffic Signal']);
+ylim([0 params.d_stop_line + 50]);
 hold off;
 
+% Interactive axis adjustment
+disp('Adjust Position plot axis. Press Enter when done.');
+axis manual;
+pause;
+
 % Velocity
-figure(3);
+figure(2);
 hold on;
 for i = 1:params.num_vehicles
     plot(1:params.num_iterations, squeeze(state(:, i, 2)), 'Color', colors(i, :));
@@ -119,8 +121,13 @@ title('Vehicle Speed Over Time');
 legend(arrayfun(@(x) sprintf('Vehicle %d', x), 1:params.num_vehicles, 'UniformOutput', false));
 hold off;
 
+% Interactive axis adjustment
+disp('Adjust Velocity plot axis. Press Enter when done.');
+axis manual;
+pause;
+
 % Acceleration
-figure(4);
+figure(3);
 hold on;
 for i = 1:params.num_vehicles
     plot(1:params.num_iterations, squeeze(state(:, i, 3)), 'Color', colors(i, :));
@@ -131,8 +138,13 @@ title('Vehicle Acceleration Over Time');
 legend(arrayfun(@(x) sprintf('Vehicle %d', x), 1:params.num_vehicles, 'UniformOutput', false));
 hold off;
 
+% Interactive axis adjustment
+disp('Adjust Acceleration plot axis. Press Enter when done.');
+axis manual;
+pause;
+
 % Decisions
-figure(5);
+figure(4);
 hold on;
 for i = 1:params.num_vehicles
     decisions = squeeze(state(:, i, 4));
@@ -178,12 +190,13 @@ save_choice = input('Do you want to save the figures? (y/n): ', 's');
 if strcmpi(save_choice, 'y')
     % Create a folder for saving results
     current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
-    folder_path = fullfile('/Users/celine/Documents/MATLAB/PF-SIQE_Msc_thesis/results', char(current_time));
+    %folder_path = fullfile('/Users/celine/Documents/MATLAB/PF-SIQE_Msc_thesis/results', char(current_time));
+    folder_path = fullfile('C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\results', char(current_time));
     mkdir(folder_path);
     
     % Save figures
-    figure_titles = {'Traffic Signal States', 'Vehicle Position', 'Vehicle Speed', 'Vehicle Acceleration', 'Vehicle Decisions'};
-    for fig_num = 1:5
+    figure_titles = {'Vehicle Position', 'Vehicle Speed', 'Vehicle Acceleration', 'Vehicle Decisions'};
+    for fig_num = 1:4
         figure(fig_num);
         saveas(gcf, fullfile(folder_path, sprintf('%s_plot.fig', lower(strrep(figure_titles{fig_num}, ' ', '_')))));
     end
