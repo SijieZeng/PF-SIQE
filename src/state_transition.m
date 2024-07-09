@@ -11,35 +11,41 @@ function StateTransition = state_transition()
     StateTransition.acceleration_probability = @acceleration_probability;
     StateTransition.decision_probability = @decision_probability;
     StateTransition.state_transition_probability = @state_transition_probability;
-    %StateTransition.groundtruth = @groundtruth;
+    StateTransition.safety_checks_and_adjustments = @safety_checks_and_adjustments;
 end
 %% nextState
 
 function next_state = nextState(state, params)
-    d = state(1); % Longitudinal Position (m)
-    v = state(2); % Speed (m/s)
-    a = state(3); % Acceleration (m/s^2)
-    D = state(4); % Decision of stop or go when facing the traffic light
-    lane = state(5); % which Lane
+    % states: a num_vehicles x 5 matrix, each row represents a vehicle state [d, v, a, D, lane]
+    % params: a structure containing simulation parameters
+    % Returns: next_states, a matrix of the same dimension as the input, representing the next state of all vehicles
+    num_vehicles = size(states, 1);
+    next_states = zeros(size(states));
 
-    T = params.dt;
+    for i = 1:num_vehicles
+        d = states(i, 1);  % Vertical position (m)
+        v = states(i, 2);  % speed (m/s)
+        a = states(i, 3);  % Acceleration (m/s^2)
+        D = states(i, 4);  % decisions
+        lane = states(i, 5);  % lane
 
-     % Ensure acceleration and time step are valid
-    if T <= 0 || isnan(T) || isnan(a) || isinf(T) || isinf(a)
-        error('Invalid parameters: T: %f, a: %f', T, a);
+        T = params.dt;  % time step
+
+        % Make sure acceleration and time step are valid
+        if T <= 0 || isnan(T) || isnan(a) || isinf(T) || isinf(a)
+            error('Invalid parameters: T: %f, a: %f', T, a);
+        end
+
+        % Update speed and position
+        v_next = max(0, v + a * T);
+        d_next = d + v * T + 0.5 * a * T^2;
+
+        if isnan(d_next) || isnan(v_next) || isinf(d_next) || isinf(v_next)
+            error('Invalid state detected. d: %f, v: %f', d_next, v_next);
+        end
+
+        next_states(i, :) = [d_next, v_next, a, D, lane];
     end
-
-    v = max(0, v + a * T);
-
-
-
-    d = d + v * T + 0.5 * a * T^2;
-
-    if isnan(d) || isnan(v) || isinf(d) || isinf(v)
-        error('Invalid state detected. d: %f, v: %f', d, v);
-    end
-
-    next_state = [d, v, a, D, lane];
 end
 %% calculate_vehicle_relations
 
@@ -47,11 +53,13 @@ function [delta_v, s] = calculate_vehicle_relations(d, v, params)
     if ~isstruct(params)
         error('params must be a struct');
     end
-    if ~isfield(params, 'num_vehicles')
-        error('params.num_vehicles is not defined');
+    if ~isfield(params, 'num_vehicles') || ~isfield(params, 's0') || ~isfield(params, 'vehicle_length')
+        error('params is missing required fields');
     end
+
     num_vehicles = params.num_vehicles;
     s0 = params.s0;  % Minimum gap
+    vehicle_length = params.vehicle_length;
 
     delta_v = zeros(1, num_vehicles);
     s = zeros(1, num_vehicles);
@@ -59,34 +67,41 @@ function [delta_v, s] = calculate_vehicle_relations(d, v, params)
     % Add debug output
     fprintf('Debug: d = %s\n', mat2str(d));
     fprintf('Debug: v = %s\n', mat2str(v));
+
+    % Check for correct input sizes
+    if length(d) ~= num_vehicles || length(v) ~= num_vehicles
+        error('Input vectors d and v must have length equal to num_vehicles');
+    end
+
+     % Lead vehicle (special case)
+    delta_v(1) = 0;  % No relative velocity for lead vehicle
+    s(1) = Inf;  % Infinite space ahead for lead vehicle
     
+    % Other vehicles
     for i = 2:num_vehicles
         delta_v(i) = v(i-1) - v(i);
-        s(i) = max(s0, d(i-1) - d(i)); % Ensure non-negative spacing
+        s(i) = max(0, d(i-1) - d(i) - vehicle_length);  % Ensure non-negative spacing
         
         % Add more debug output
         fprintf('Debug: Vehicle %d, delta_v = %.4f, s = %.4f\n', i, delta_v(i), s(i));
+        % Check for unrealistic values
+        if s(i) < s0
+            warning('Vehicle %d: Spacing (%.2f) is less than minimum gap (%.2f)', i, s(i), s0);
+        end
     end
     
-    % Lead vehicle
-    delta_v(1) = 0;
-    s(1) = Inf;
-    
-    % Check for invalid values, excluding the lead vehicle's s value
-    epsilon = 1e-10;  % Small tolerance for floating-point comparisons
-    if any(isnan(delta_v)) || any(isnan(s)) || any(isinf(delta_v)) || any(s(2:end) < (s0 - epsilon))
-        error('Invalid values detected in vehicle relations calculations.');
-    end
-
-    % Add more detailed error reporting
-    if any(isnan(delta_v))
-        error('NaN values detected in delta_v');
-    elseif any(isnan(s))
-        error('NaN values detected in s');
-    elseif any(isinf(delta_v))
-        error('Inf values detected in delta_v');
-    elseif any(s(2:end) < (s0 - epsilon))
-        error('s values less than s0 detected: %s', mat2str(s(2:end)));
+     % Check for invalid values, excluding the lead vehicle's s value
+    epsilon = 1e-10; % Small tolerance for floating-point comparisons
+    if any(isnan(delta_v)) || any(isnan(s)) || any(isinf(delta_v(2:end))) || any(s(2:end) < -epsilon)
+        if any(isnan(delta_v))
+            error('NaN values detected in delta_v: %s', mat2str(delta_v));
+        elseif any(isnan(s))
+            error('NaN values detected in s: %s', mat2str(s));
+        elseif any(isinf(delta_v(2:end)))
+            error('Inf values detected in delta_v (excluding lead vehicle): %s', mat2str(delta_v(2:end)));
+        elseif any(s(2:end) < -epsilon)
+            error('Negative spacing detected: %s', mat2str(s(2:end)));
+        end
     end
 end
 %% intelligent_driver_model
@@ -398,7 +413,61 @@ function p_joint = state_transition_probability(~, a_next, D_k, D_next, S_next, 
         error('Invalid joint probability calculated: %f', p_joint);
     end
 end
+%% safety_checks_and_adjustments
 
+function [next_state, warnings] = safety_checks_and_adjustments(current_state, next_state, params)
+    fprintf('Size of current_state: %s\n', mat2str(size(current_state)));
+    fprintf('Size of next_state: %s\n', mat2str(size(next_state)));
+
+    % Check input dimensions
+    if size(current_state, 2) ~= params.num_vehicles
+        error('current_state dimensions are incorrect. Expected num_vehicles columns.');
+    end
+    if size(next_state, 1) ~= params.num_vehicles
+        error('next_state dimensions are incorrect. Expected num_vehicles rows.');
+    end
+
+    % Initialize warnings array
+    warnings = {};
+    
+    % Extract parameters
+    num_vehicles = params.num_vehicles;
+    min_distance = params.s0 + params.vehicle_length;
+    dt = params.dt;
+    v_max = params.v_desired;
+    a_max = params.a_max;
+    a_min = params.b_max;
+
+    % Extract current positions and velocities
+    current_positions = current_state(:, 1);
+    current_velocities = current_state(:, 2);
+    
+    % Perform safety checks and adjustments
+   for i = num_vehicles:-1:2
+        % Adjust position and speed only when absolutely necessary
+        if next_state(i, 1) > next_state(i-1, 1)
+            next_state(i, 1) = next_state(i-1, 1) - min_distance;
+            next_state(i, 2) = (next_state(i, 1) - current_state(i, 1)) / dt;
+        end
+
+        % Keep the original acceleration unless it exceeds the limit
+        next_state(i, 3) = max(a_min, min(next_state(i, 3), a_max));
+    end
+    
+    % Special check for the lead vehicle (i=1)
+    next_state(1, 2) = max(0, min(next_state(1, 2), v_max));
+    next_state(1, 3) = max(a_min, min((next_state(1, 2) - current_velocities(1)) / dt, a_max));
+    
+    % Check for any remaining issues
+    for i = 2:num_vehicles
+        if next_state(i, 1) > next_state(i-1, 1)
+            warnings{end+1} = sprintf('Error: Vehicle order violation persists for vehicle %d', i);
+        end
+        if (next_state(i-1, 1) - next_state(i, 1)) < min_distance
+            warnings{end+1} = sprintf('Error: Minimum distance violation persists for vehicle %d', i);
+        end
+    end
+end
 
 
 

@@ -24,7 +24,7 @@ params.lane = 1;
 params.D_h = params.d_stop_line - 150;       % Decision distance in meters
 params.T_reaction = 1.0;% Reaction time in seconds
 params.p_stop = 0.5;    % Probability of stopping in the dilemma zone
-params.b_max = 3.0; 
+params.b_max = 1.5; 
 params.d_0 = 0; 
 
 % traffic light decision model
@@ -38,12 +38,13 @@ params.D_undecided = 3; % Assuming 2 represents D_undecided
 params.v_desired = 15;  % desired speed (m/s)
 params.a_max = 1.0;     % maximum acceleration (m/s^2)
 params.b = 1.5;         % comfortable deceleration (m/s^2)
-params.s0 = 7.0;        % minimum gap (m), take into account the vehicle length of 5m
+params.s0 = 2.0;        % minimum gap (m)
+params.vehicle_length = 5.0;
 params.T = 1.0;         % safe time headway (s)
 params.delta = 4;       % acceleration exponent
 
 % Acceleration noise
-params.n_a = 0.1;       % Bound for uniform distribution U[-params.n_a, params.n_a]
+params.n_a = 0.5;       % Bound for uniform distribution U[-params.n_a, params.n_a]
 
 % Measurement Parameters
 % loop detectors
