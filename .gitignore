@@ -5,7 +5,7 @@
 *.asv
 *.mex*
 *.mat
-*.fig
+
 
 # 编辑器/IDE 产生的文件
 *.sublime-workspace
