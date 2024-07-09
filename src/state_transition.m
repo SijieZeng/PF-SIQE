@@ -15,12 +15,13 @@ function StateTransition = state_transition()
 end
 %% nextState
 
-function next_state = nextState(state, params)
+function next_states = nextState(states, params)
     % states: a num_vehicles x 5 matrix, each row represents a vehicle state [d, v, a, D, lane]
     % params: a structure containing simulation parameters
     % Returns: next_states, a matrix of the same dimension as the input, representing the next state of all vehicles
     num_vehicles = size(states, 1);
     next_states = zeros(size(states));
+    T = params.dt;  % time step
 
     for i = 1:num_vehicles
         d = states(i, 1);  % Vertical position (m)
@@ -28,8 +29,6 @@ function next_state = nextState(state, params)
         a = states(i, 3);  % Acceleration (m/s^2)
         D = states(i, 4);  % decisions
         lane = states(i, 5);  % lane
-
-        T = params.dt;  % time step
 
         % Make sure acceleration and time step are valid
         if T <= 0 || isnan(T) || isnan(a) || isinf(T) || isinf(a)
