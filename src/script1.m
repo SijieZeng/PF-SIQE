@@ -15,8 +15,9 @@ params.num_vehicles = 5; % Number of vehicles
 
 % generate_traffic_signal_states
 params.red_time = 20;   % Red light duration (s)
-params.yellow_time = 3.5; % Yellow light duration (s)
+params.yellow_time = 3.5; % Yellow light duration (s), cannot tune by now
 params.green_time = 20; % Green light duration (s)
+params.delta_t = 0.5;
 params.d_stop_line = 300; % Stop line position (m)               
 params.lane = 1;
 
@@ -39,12 +40,12 @@ params.v_desired = 15;  % desired speed (m/s)
 params.a_max = 1.0;     % maximum acceleration (m/s^2)
 params.b = 1.5;         % comfortable deceleration (m/s^2)
 params.s0 = 2.0;        % minimum gap (m)
-params.vehicle_length = 5.0;
+params.vehicle_length = 5.0; %vehicle length (m)
 params.T = 1.0;         % safe time headway (s)
 params.delta = 4;       % acceleration exponent
 
 % Acceleration noise
-params.n_a = 0.5;       % Bound for uniform distribution U[-params.n_a, params.n_a]
+params.n_a = 0.2;       % Bound for uniform distribution U[-params.n_a, params.n_a]
 
 % Measurement Parameters
 % loop detectors
