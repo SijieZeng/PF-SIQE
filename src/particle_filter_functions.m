@@ -80,35 +80,73 @@ function particles = initialize_particles(init_bounds, params)
 end
 %% predict_particles
 
-function particles = predict_particles(particles, params, StateTransition)
+function particles = predict_particles(particles, params, ST)
+    % Get the size of the particles array
     [num_particles, num_vehicles, state_dim] = size(particles);
-
+    
+    % Error checking
+    if state_dim < 4
+        error('Particle state dimension is less than 4. Expected at least 4 (d, v, a, D), got %d', state_dim);
+    end
+    
+    % Generate traffic signal states for all time steps (assuming this is done once)
+    S = ST.generate_traffic_signal_states(params);
+    
+    % Initialize T_elapsed (assuming this is done once)
+    [~, T_elapsed_dt, ~, ~] = ST.update_elapsed_time(S, params);
+    
     for j = 1:num_particles
         % Get states of all vehicles for this particle
-        all_vehicle_states = squeeze(particles(j, :, :));
+        if num_vehicles == 1
+            all_vehicle_states = squeeze(particles(j, 1, :))';
+        else
+            all_vehicle_states = squeeze(particles(j, :, :));
+        end
         
+        % If there's only one vehicle, ensure all_vehicle_states is a column vector
+        %if num_vehicles == 1
+            %all_vehicle_states = all_vehicle_states(:);
+        %end
+        
+        % Extract d, v, and D from all_vehicle_states
+        d = all_vehicle_states(:, 1)';
+        v = all_vehicle_states(:, 2)';
+        a = all_vehicle_states(:, 3)';
+        D = all_vehicle_states(:, 4)';
+        
+        % Convert all_vehicle_states to matrix format
+        states_matrix = [all_vehicle_states(:, 1:4), ones(num_vehicles, 1)];
+        
+        % Call nextState with the matrix format
+        next_states_matrix = ST.nextState(states_matrix, params);
+        
+        % Extract d_next and v_next
+        d_next = next_states_matrix(:, 1)';
+        v_next = next_states_matrix(:, 2)';
+        
+        % Calculate a_IDM_next
+        a_IDM_next = ST.intelligent_driver_model(d, v, params);
+        
+        % Calculate T_elapsed_next
+        [~, T_elapsed_next_dt] = ST.calculate_T_elapsed_next(T_elapsed_dt, params);
+        
+        % Ensure T_elapsed_next_dt length is correct
+        if length(T_elapsed_next_dt) ~= num_vehicles
+            T_elapsed_next_dt = zeros(1, num_vehicles);
+        end
+        
+        % Calculate D_next (assuming we're at step 1 for simplicity)
+        D_next = ST.decision_making(d, d_next, v, v_next, S{1}, S{2}, T_elapsed_dt, T_elapsed_next_dt, D, params);
+        
+        % Calculate a_decision_next
+        a_decision_next = ST.traffic_light_decision_model(D, v, d, params);
+        
+        % Calculate a_next
+        a_next = ST.acceleration_next(a_IDM_next, a_decision_next, v, params);
+        
+        % Update particles with new states
         for i = 1:num_vehicles
-            % Predict next state
-            current_state = all_vehicle_states(i, :)';
-            try
-                next_state = StateTransition.nextState(current_state, all_vehicle_states, params);
-                
-                % Validate next_state
-                if length(next_state) ~= state_dim
-                    error('Invalid next state: dimension mismatch. Expected %d, got %d', state_dim, length(next_state));
-                end
-                if any(isnan(next_state)) || any(isinf(next_state))
-                    error('Invalid next state: contains NaN or Inf');
-                end
-                if next_state(1) < 0  % Assuming first state is position
-                    error('Invalid next state: negative position');
-                end
-                
-                particles(j, i, :) = next_state;
-            catch ME
-                warning('Error in state prediction for particle %d, vehicle %d: %s', j, i, ME.message);
-                % Keep the current state if prediction fails
-            end
+            particles(j, i, :) = [d_next(i), v_next(i), a_next(i), D_next(i)];
         end
     end
 end
