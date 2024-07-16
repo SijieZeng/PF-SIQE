@@ -96,7 +96,7 @@ function [all_states, all_signals] = simulate1(initial_states, params)
         all_states{step+1} = next_states;
 
         % Print current state for debugging
-        fprintf('Time step %d: S = %s, S_next = %s\n', step, S{step}, S{step+1});
+        fprintf('Time step %d: S = %s, S_next = %s\n', step, S{step}, S{step+2});
         for i = 1:num_vehicles
             if i == 1
                 s = Inf;

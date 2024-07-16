@@ -20,7 +20,7 @@ params.num_vehicles = 3; % Number of vehicles
 params.num_particles = 5;
 
 % generate_traffic_signal_states
-params.red_time = 5;   % Red light duration (s)
+params.red_time = 8;   % Red light duration (s)
 params.yellow_time = 3.5; % Yellow light duration (s), cannot tune by now
 params.green_time = 5; % Green light duration (s)
 params.delta_t = 0.5;
@@ -60,7 +60,8 @@ params.d_loop2 = 200;
 params.d_loop3 = 200;
 params.dt_loop1 = 1; % s
 params.dt_loop2 = 1; % s
-params.dt_loop3 = 1; % s
+params.dt_loop3 = 1;
+% s
 params.accuracy_loop2 = 0.95;
 
 % Floating sensors
@@ -98,7 +99,7 @@ S = ST.generate_traffic_signal_states(params);
 % Prepare data for plotting
 num_vehicles = params.num_vehicles;
 num_iterations = params.num_iterations;
-time_steps_vehicle = (0:params.num_iterations-1) * params.dt;
+time_steps_vehicle = (0:params.num_iterations -1) * params.dt;
 time_steps_signal = (0:length(S)-1) * params.delta_t;
 
 % Initialize arrays to store states
@@ -116,6 +117,120 @@ for t = 1:num_iterations
         decisions(t, i) = all_states{t}(i).D;
     end
 end
+
+%% 
+% 修正时间步长
+% time_steps_vehicle = (0:size(positions, 1) - 1) * params.dt;
+% 创建一个新图形
+figure('Position', [100, 100, 1200, 900]);  % Resize figure to fit subplot
+
+% 1. Vehicle location and traffic signal status
+subplot(2, 2, 1);
+hold on;
+color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
+for k = 1:length(S)
+    color = color_map(S(k));
+    plot(time_steps_signal(k), params.d_stop_line, [color, '.'], 'MarkerSize', 20);
+end
+for i = 1:num_vehicles
+    plot(time_steps_vehicle, positions(:, i), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', i));
+end
+xlabel('Time (s)');
+ylabel('Position (m)');
+title('Vehicle Positions and Traffic Signals');
+ylim([0, params.d_stop_line + 50]);
+xlim([0, max(time_steps_vehicle(end), time_steps_signal(end))]);
+legend_elements = [plot(NaN,NaN,'r.','MarkerSize',20), plot(NaN,NaN,'y.','MarkerSize',20), plot(NaN,NaN,'g.','MarkerSize',20)];
+legend([legend_elements, plot(NaN,NaN,'-','Color','b')], {'Red', 'Yellow', 'Green', 'Vehicle'}, 'Location', 'best');
+grid on;
+
+% 2. Vehicle speed
+subplot(2, 2, 2);
+hold on;
+color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
+for k = 1:length(S)
+    color = color_map(S(k));
+    plot(time_steps_signal(k), -0.5, [color, '.'], 'MarkerSize', 20);
+end
+for v = 1:num_vehicles
+    plot(time_steps_vehicle, velocities(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
+end
+xlabel('Time (s)');
+ylabel('Velocity (m/s)');
+title('Vehicle Velocities');
+legend('Location', 'best');
+grid on;
+
+% 3. Vehicle acceleration
+subplot(2, 2, 3);
+hold on;
+color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
+for k = 1:length(S)
+    color = color_map(S(k));
+    plot(time_steps_signal(k), -1.6, [color, '.'], 'MarkerSize', 20);
+end
+for v = 1:num_vehicles
+    plot(time_steps_vehicle, accelerations(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
+end
+xlabel('Time (s)');
+ylabel('Acceleration (m/s^2)');
+title('Vehicle Accelerations');
+legend('Location', 'best');
+grid on;
+
+% 4. Vehicle Decision
+subplot(2, 2, 4);
+hold on;
+color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
+for k = 1:length(S)
+    color = color_map(S(k));
+    plot(time_steps_signal(k), 0.9, [color, '.'], 'MarkerSize', 20);
+end
+for v = 1:num_vehicles
+    plot(time_steps_vehicle , decisions(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
+end
+xlabel('Time (s)');
+ylabel('Decision');
+title('Vehicle Decisions');
+yticks([1, 2, 3]);
+yticklabels({'Stop', 'Go', 'Undecided'});
+legend('Location', 'best');
+grid on;
+
+% Adjust the spacing between subplots
+spacing = 0.05;
+subplot_pos = get(subplot(2,2,1), 'Position');
+set(subplot(2,2,1), 'Position', [subplot_pos(1), subplot_pos(2), subplot_pos(3)-spacing, subplot_pos(4)-spacing]);
+subplot_pos = get(subplot(2,2,2), 'Position');
+set(subplot(2,2,2), 'Position', [subplot_pos(1)+spacing, subplot_pos(2), subplot_pos(3)-spacing, subplot_pos(4)-spacing]);
+subplot_pos = get(subplot(2,2,3), 'Position');
+set(subplot(2,2,3), 'Position', [subplot_pos(1), subplot_pos(2)+spacing, subplot_pos(3)-spacing, subplot_pos(4)-spacing]);
+subplot_pos = get(subplot(2,2,4), 'Position');
+set(subplot(2,2,4), 'Position', [subplot_pos(1)+spacing, subplot_pos(2)+spacing, subplot_pos(3)-spacing, subplot_pos(4)-spacing]);
+
+% Add a general title
+sgtitle('Traffic Simulation Results', 'FontSize', 16);
+
+% Ask the user whether to save the graphic
+save_choice = input('Do you want to save the figure? (y/n): ', 's');
+if strcmpi(save_choice, 'y')
+    % Create a folder to save the results
+    current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
+    folder_path = fullfile('C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\results', char(current_time));
+    mkdir(folder_path);
+    
+    % Save the drawing
+    saveas(gcf, fullfile(folder_path, 'traffic_simulation_results.fig'));
+    saveas(gcf, fullfile(folder_path, 'traffic_simulation_results.eps'));
+    saveas(gcf, fullfile(folder_path, 'traffic_simulation_results.png'));
+    
+    disp(['The figure has been saved in the folder: ' folder_path]);
+else
+    disp('Figure was not saved.');
+end
+
+close all;
+%% 
 
 % 创建图形
 figure(1);
@@ -191,6 +306,7 @@ hold off;
 save_choice = input('Do you want to save the figures? (y/n): ', 's');
 
 if strcmpi(save_choice, 'y')
+    print -deps epsFig
     % Create a folder for saving results
     current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
     %folder_path = fullfile('/Users/celine/Documents/MATLAB/PF-SIQE_Msc_thesis/results', char(current_time));
