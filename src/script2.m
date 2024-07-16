@@ -64,8 +64,11 @@ params.accuracy_loop2 = 0.9;
 % Floating sensors
 params.sigma_GPS = 5;
 
-StateTransition = state_transition();
-initial_states = struct('d', {150, 100, 50}, 'v', {15, 5, 10}, 'a', {0, 0, 0}, 'D', {3, 3, 3});
+ST = state_transition();
+M = measurement();
+PF = particle_filter_functions();
+
+%initial_states = struct('d', {150, 100, 50}, 'v', {15, 5, 10}, 'a', {0, 0, 0}, 'D', {3, 3, 3});
 S = StateTransition.generate_traffic_signal_states(params);
 disp('Length of S:');
 disp(length(S));

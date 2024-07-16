@@ -1,16 +1,16 @@
-function StateTransition = state_transition()
-    StateTransition.nextState = @nextState;
-    StateTransition.intelligent_driver_model = @intelligent_driver_model;
-    StateTransition.generate_traffic_signal_states = @generate_traffic_signal_states;
-    StateTransition.update_elapsed_time = @update_elapsed_time;
-    StateTransition.calculate_T_elapsed_next = @calculate_T_elapsed_next;
-    StateTransition.decision_making = @decision_making;
-    StateTransition.traffic_light_decision_model = @traffic_light_decision_model;
-    StateTransition.acceleration_next_no_noise = @acceleration_next_no_noise;
-    StateTransition.acceleration_next = @acceleration_next;
-    StateTransition.acceleration_probability = @acceleration_probability;
-    StateTransition.decision_probability = @decision_probability;
-    StateTransition.state_transition_probability = @state_transition_probability;
+function ST = state_transition()
+    ST.nextState = @nextState;
+    ST.intelligent_driver_model = @intelligent_driver_model;
+    ST.generate_traffic_signal_states = @generate_traffic_signal_states;
+    ST.update_elapsed_time = @update_elapsed_time;
+    ST.calculate_T_elapsed_next = @calculate_T_elapsed_next;
+    ST.decision_making = @decision_making;
+    ST.traffic_light_decision_model = @traffic_light_decision_model;
+    ST.acceleration_next_no_noise = @acceleration_next_no_noise;
+    ST.acceleration_next = @acceleration_next;
+    ST.acceleration_probability = @acceleration_probability;
+    ST.decision_probability = @decision_probability;
+    ST.state_transition_probability = @state_transition_probability;
 end
 %% nextState
 
@@ -22,6 +22,7 @@ function next_states = nextState(states, params)
     next_states = zeros(size(states));
     T = params.dt;  % time step
     
+    assert(size(states, 1) == params.num_vehicles, 'Mismatch between states and params.num_vehicles');
 
     for i = 1:num_vehicles
         d = states(i, 1);  % Vertical position (m)
@@ -45,6 +46,7 @@ function next_states = nextState(states, params)
 
         next_states(i, :) = [d_next, v_next, a, D, lane];
     end
+     status = true; % or false if any issues were encountered
 end 
 
 %% intelligent_driver_model
@@ -65,6 +67,8 @@ function a_IDM_next = intelligent_driver_model(d, v, params)
     if ~all(isfield(params, {'num_vehicles', 's0', 'vehicle_length', 'v_desired', 'a_max', 'b', 'T', 'delta'}))
         error('params is missing required fields');
     end
+
+    status = struct('success', true, 'message', '');
 
     num_vehicles = params.num_vehicles;
     dt = params.dt;
@@ -101,6 +105,11 @@ function a_IDM_next = intelligent_driver_model(d, v, params)
             end
         else
             delta_v(i) = v(i) - v(i-1);
+             if any(isnan(delta_v))
+                status.success = false;
+                status.message = sprintf('NaN values detected in delta_v: %s', mat2str(delta_v));
+                return;
+            end
             s(i) = max(0,  d(i-1) - d(i) - vehicle_length);  % Ensure non-negative spacing
             if s(i) < s0
                 warning('Vehicle %d: Spacing (%.2f) is less than minimum gap (%.2f)', i, s(i), s0);
@@ -141,7 +150,7 @@ end
 %% generate_traffic_signal_states
 
 function S = generate_traffic_signal_states(params)
-    num_iterations = params.num_iterations;
+    num_iterations = params.num_iterations * 2;
     red_time = params.red_time;   
     yellow_time = params.yellow_time; 
     green_time = params.green_time; 
@@ -178,8 +187,7 @@ function [T_elapsed_delta_t, T_elapsed_dt, yellow_start_delta_t, yellow_start_dt
     % 预分配 yellow_start_delta_t
     yellow_start_delta_t = zeros(1, ceil(num_iterations / (yellow_time / delta_t)));
     yellow_count = 0;
-
-    % 检测黄灯开始的时间
+    
     for k = 2:num_iterations
         if S(k) == "yellow" && S(k-1) ~= "yellow"
             yellow_count = yellow_count + 1;

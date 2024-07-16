@@ -1,34 +1,27 @@
 function [all_states, all_signals] = simulate1(initial_states, params)
     % Initialize
-    StateTransition = state_transition();
+    ST = state_transition();
     num_iterations = params.num_iterations;
     num_vehicles = params.num_vehicles;
     
     % Preallocate arrays to store states and signals
     all_states = cell(num_iterations, 1);
     all_signals = cell(num_iterations, 1);
-    
+
     % Initialize first state
     current_states = initial_states;
     all_states{1} = current_states;
     
+
+
     % Generate traffic signal states for all time steps
-    S = StateTransition.generate_traffic_signal_states(params);
+    S = ST.generate_traffic_signal_states(params);
     for i = 1:length(S)
     all_signals{i} = S{i};
     end
     
     % Initialize T_elapsed
-    [~, T_elapsed_dt, ~, ~] = StateTransition.update_elapsed_time(S, params);
-
-    
-     % Print initial state
-    fprintf('initial: S = %s, S_next = %s\n', S{1}, S{2});
-    for i = 1:num_vehicles
-        fprintf('Vehicle %d, d = %.2f, v = %.2f, a = %.2f, D = %d, delta_v = %.2f, s = %.2f, d_next = N/A, v_next = N/A\n', ...
-            i, current_states(i).d, current_states(i).v, current_states(i).a, current_states(i).D, 0, Inf);
-    end
-    fprintf('\n');
+    [~, T_elapsed_dt, ~, ~] = ST.update_elapsed_time(S, params);
 
     for step = 1:num_iterations-1
         % 在调用 nextState 之前，从 current_states 中提取 d 和 v
@@ -48,7 +41,7 @@ function [all_states, all_signals] = simulate1(initial_states, params)
         end
         
         % Call nextState with the matrix format
-        next_states_matrix = StateTransition.nextState(states_matrix, params);
+        next_states_matrix = ST.nextState(states_matrix, params);
         
         % Convert next_states_matrix back to struct array format
         next_states = struct('d', num2cell(next_states_matrix(:, 1)), ...
@@ -67,20 +60,31 @@ function [all_states, all_signals] = simulate1(initial_states, params)
         end
 
         % Calculate a_IDM_next
-        a_IDM_next = StateTransition.intelligent_driver_model(d, v, params);
-        % fprintf('Debug: Vehicle %d, d = %.2f, v = %.2f, delta_v = %.2f, s = %.2f\n, a_IDM = %.4f\n', i, d(i), v(i), delta_v(i), s(i), a_IDM_next(i));
-       
-        % Calculate T_elapsed_next
-        [~, T_elapsed_next_dt] = StateTransition.calculate_T_elapsed_next(T_elapsed_dt, params);
+        a_IDM_next = ST.intelligent_driver_model(d, v, params);
         
+        % Calculate T_elapsed_next
+        [~, T_elapsed_next_dt] = ST.calculate_T_elapsed_next(T_elapsed_dt, params);
+
+        % Ensure T_elapsed_next_dt length is correct
+        if length(T_elapsed_next_dt) ~= num_vehicles
+            T_elapsed_next_dt = zeros(1, num_vehicles); % 初始化为零，或根据需要调整
+        end
+
+        % Debugging outputs for array lengths and indices
+        %fprintf('Step %d: Checking array lengths and indices...\n', step);
+        %fprintf('num_vehicles: %d\n', num_vehicles);
+        %fprintf('Length of T_elapsed_next_dt: %d\n', length(T_elapsed_next_dt));
+        %fprintf('Length of d_next: %d\n', length(d_next));
+        %fprintf('Length of v_next: %d\n', length(v_next));
+        %fprintf('Length of D: %d\n', length(D));
         % Calculate D_next
-        D_next = StateTransition.decision_making(d, d_next, v, v_next, S{step}, S{step+1}, T_elapsed_dt, T_elapsed_next_dt, D, params);
+        D_next = ST.decision_making(d, d_next, v, v_next, S{step}, S{step+1}, T_elapsed_dt, T_elapsed_next_dt, D, params);
         
         % Calculate a_decision_next
-        a_decision_next = StateTransition.traffic_light_decision_model(D, v, d, params);
+        a_decision_next = ST.traffic_light_decision_model(D, v, d, params);
         
         % Calculate a_next
-        a_next = StateTransition.acceleration_next(a_IDM_next, a_decision_next, v, params);
+        a_next = ST.acceleration_next(a_IDM_next, a_decision_next, v, params);
         
         % Update states for next iteration
         for i = 1:num_vehicles
