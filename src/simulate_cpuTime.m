@@ -1,4 +1,4 @@
-function [state, S, total_cpu_times] = simulate(params, SHOW_TIMING_OUTPUT)
+function [state, S, total_cpu_times] = simulate_cpuTime(params, SHOW_TIMING_OUTPUT)
 
     % Check params
     required_fields = {'num_iterations', 'num_vehicles', 'd_stop_line', 'v_desired', 'D_undecided'};

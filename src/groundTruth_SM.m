@@ -208,20 +208,20 @@ subplot_pos = get(subplot(2,2,4), 'Position');
 set(subplot(2,2,4), 'Position', [subplot_pos(1)+spacing, subplot_pos(2)+spacing, subplot_pos(3)-spacing, subplot_pos(4)-spacing]);
 
 % Add a general title
-sgtitle('Traffic Simulation Results', 'FontSize', 16);
+sgtitle('Ground Truth States and Measurements', 'FontSize', 16);
 
 % Ask the user whether to save the graphic
 save_choice = input('Do you want to save the figure? (y/n): ', 's');
 if strcmpi(save_choice, 'y')
     % Create a folder to save the results
     current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
-    folder_path = fullfile('C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\results', char(current_time));
+    folder_path = fullfile('C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\results\groundTruth_SM', char(current_time));
     mkdir(folder_path);
     
     % Save the drawing
-    saveas(gcf, fullfile(folder_path, 'traffic_simulation_results.fig'));
-    saveas(gcf, fullfile(folder_path, 'traffic_simulation_results.eps'));
-    saveas(gcf, fullfile(folder_path, 'traffic_simulation_results.png'));
+    saveas(gcf, fullfile(folder_path, 'groundTruth_States_Measurements.fig'));
+    saveas(gcf, fullfile(folder_path, 'groundTruth_States_Measurements.eps'));
+    saveas(gcf, fullfile(folder_path, 'groundTruth_States_Measurements.png'));
     
     disp(['The figure has been saved in the folder: ' folder_path]);
 else
