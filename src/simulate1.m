@@ -1,6 +1,6 @@
 function [all_states, all_signals] = simulate1(initial_states, params)
     % Initialize
-    ST = state_transition();
+    ST = state_transition_functions();
     num_iterations = params.num_iterations;
     num_vehicles = params.num_vehicles;
     
@@ -30,14 +30,13 @@ function [all_states, all_signals] = simulate1(initial_states, params)
         D = [current_states.D];
 
         % Convert current_states to matrix format
-        states_matrix = zeros(length(current_states), 5);
+        states_matrix = zeros(length(current_states), 4);
         for i = 1:length(current_states)
             states_matrix(i, 1) = current_states(i).d;
             states_matrix(i, 2) = current_states(i).v;
             states_matrix(i, 3) = current_states(i).a;
             states_matrix(i, 4) = current_states(i).D;
             % Assuming lane information is not available, set it to 1 for all vehicles
-            states_matrix(i, 5) = 1;
         end
         
         % Call nextState with the matrix format

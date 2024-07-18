@@ -1,4 +1,4 @@
-function ST = state_transition()
+function ST = state_transition_functions()
     ST.nextState = @nextState;
     ST.intelligent_driver_model = @intelligent_driver_model;
     ST.generate_traffic_signal_states = @generate_traffic_signal_states;
@@ -29,7 +29,7 @@ function next_states = nextState(states, params)
         v = states(i, 2);  % speed (m/s)
         a = states(i, 3);  % Acceleration (m/s^2)
         D = states(i, 4);  % decisions
-        lane = states(i, 5);  % lane
+        % lane = states(i, 5);  % lane
 
         % Make sure acceleration and time step are valid
         if T <= 0 || isnan(T) || isnan(a) || isinf(T) || isinf(a)
@@ -44,7 +44,7 @@ function next_states = nextState(states, params)
             error('Invalid state detected. d: %f, v: %f', d_next, v_next);
         end
 
-        next_states(i, :) = [d_next, v_next, a, D, lane];
+        next_states(i, :) = [d_next, v_next, a, D];
     end
      status = true; % or false if any issues were encountered
 end 

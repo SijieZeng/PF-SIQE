@@ -1,4 +1,4 @@
-function debug_output(params, d, v, a, D, lane, c, c_tilde, o, o_tilde, v_avg, v_avg_tilde, d_tilde, t)
+function debug_output(params, d, v, a, D, c, c_tilde, o, o_tilde, v_avg, v_avg_tilde, d_tilde, t)
     num_vehicles = params.num_vehicles;
     
     if t == 0
@@ -9,8 +9,8 @@ function debug_output(params, d, v, a, D, lane, c, c_tilde, o, o_tilde, v_avg, v
     end
     
     for i = 1:num_vehicles
-        fprintf('Vehicle %d: d = %.2f, v = %.2f, a = %.2f, D = %.2f, lane = %d\n', ...
-                i, d(i), v(i), a(i), D(i), lane(i));
+        fprintf('Vehicle %d: d = %.2f, v = %.2f, a = %.2f, D = %.2f', ...
+                i, d(i), v(i), a(i), D(i));
         % Only print d_tilde if it's available (i.e., not in the initial state)
         if t > 0
             fprintf('Vehicle %d: d_tilde = %.2f\n', i, d_tilde(i));

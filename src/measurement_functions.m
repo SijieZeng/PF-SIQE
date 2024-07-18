@@ -1,4 +1,4 @@
-function M = measurement()
+function M = measurement_functions()
     M.calculate_previous_position = @calculate_previous_position;
     M.count_loop = @count_loop;
     M.measure_c  = @measure_c ;
@@ -29,7 +29,7 @@ function d_previous = calculate_previous_position(d, v, params, loop_type)
 end
 %% count_loop
 
-function count = count_loop(params, d, v)
+function c = count_loop(params, d, v)
 
     % Get the time step
     dt = params.dt_loop1;
@@ -37,7 +37,7 @@ function count = count_loop(params, d, v)
     num_vehicles = params.num_vehicles;
 
     % Initialize an array to store counts at each time step
-    count = 0;
+    c = 0;
     d_previous = zeros(1, num_vehicles);
 
     % Loop through  each vehicle
@@ -47,7 +47,7 @@ function count = count_loop(params, d, v)
             
         % Check if vehicle passed the loop during this time step
         if (d_previous(i) < d_loop1) && (d(i) >= d_loop1)
-            count = count + 1;
+            c = c + 1;
         end     
     end
 end

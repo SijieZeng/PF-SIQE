@@ -8,8 +8,8 @@ set(0, 'DefaultFigureCreateFcn', @(fig, ~)set(fig, 'CloseRequestFcn', @(src, ~)c
 
 % Debug code for initialize_particles function
 PF = particle_filter_functions();
-ST = state_transition();
-M = measurement();
+ST = state_transition_functions();
+M = measurement_functions();
 % Set up test parameters
 % State transition Parameters
 params = struct();

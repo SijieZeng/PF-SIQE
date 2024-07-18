@@ -1,6 +1,6 @@
 % Initialize the necessary classes
-ST = state_transition();
-M = measurement();
+ST = state_transition_functions();
+M = measurement_functions();
 
 % Set up parameters
 params = struct();
@@ -19,18 +19,18 @@ params.sigma_GPS = 5; % GPS测量的标准差，单位可能是米
 % Initial states for vehicles
 % Format: [d, v, a, D, lane]
 initial_states = [
-    215, 10, 1, 0, 1;  % This vehicle will pass the loop
-    180, 5, 0, 0, 1;   % This vehicle will not pass the loop in 5 iterations
-    150, 5, 0, 0, 1    % This vehicle will pass the loop
+    215, 10, 1, 0 ;  % This vehicle will pass the loop
+    180, 5, 0, 0;   % This vehicle will not pass the loop in 5 iterations
+    150, 5, 0, 0    % This vehicle will pass the loop
 ];
 % Extract initial values for d, v, a, D, and lane
 d = initial_states(:, 1)';
 v = initial_states(:, 2)';
 a = initial_states(:, 3)';
 D = initial_states(:, 4)';
-lane = initial_states(:, 5)';
 
-debug_output(params, d, v, a, D, lane, 0, 0, 0, 0, 0, 0, 0, 0);
+
+debug_output(params, d, v, a, D, 0, 0, 0, 0, 0, 0, 0, 0);
 
 % Run simulation and count vehicles
 c = zeros(1, params.num_iterations);
@@ -51,7 +51,6 @@ for t = 1:params.num_iterations
     v = next_states(:, 2)'; % Transpose to row vector
     a = next_states(:, 3)';
     D = next_states(:, 4)';
-    lane = next_states(:, 5)';
     
     % Count vehicles passing the loop
     c(t) = M.count_loop(params, d, v);
@@ -73,7 +72,7 @@ for t = 1:params.num_iterations
     end
 
     % Output debug information
-    debug_output(params, d, v, a, D, lane, c(t), c_tilde(t), o(t), o_tilde(t), v_avg(t), v_avg_tilde(t),d_tilde(:, t), t);
+    debug_output(params, d, v, a, D, c(t), c_tilde(t), o(t), o_tilde(t), v_avg(t), v_avg_tilde(t),d_tilde(:, t), t);
     
     % Update current states for next iteration
     current_states = next_states;
