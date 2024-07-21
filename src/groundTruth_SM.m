@@ -18,7 +18,6 @@ params.dt = 1;  % time step (s)
 params.num_iterations = 40; % Number of time steps
 params.num_vehicles = 2; % Number of vehicles 
 params.num_particles = 5;
-
 % generate_traffic_signal_states
 params.red_time = 8;   % Red light duration (s)
 params.yellow_time = 3.5; % Yellow light duration (s), cannot tune by now
@@ -130,7 +129,8 @@ hold on;
 color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
 for k = 1:length(S)
     color = color_map(S(k));
-    plot(time_steps_signal(k), params.d_stop_line, [color, '.'], 'MarkerSize', 20);
+    line([time_steps_signal(k) time_steps_signal(k)], [params.d_stop_line params.d_stop_line + 5], 'Color', color, 'LineWidth', 2);
+    %plot(time_steps_signal(k), params.d_stop_line, [color, '.'], 'MarkerSize', 5);
 end
 for i = 1:num_vehicles
     plot(time_steps_vehicle, positions(:, i), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', i));
@@ -161,7 +161,8 @@ hold on;
 color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
 for k = 1:length(S)
     color = color_map(S(k));
-    plot(time_steps_signal(k), -0.5, [color, '.'], 'MarkerSize', 20);
+    line([time_steps_signal(k) time_steps_signal(k)], [-0.7 -0.3], 'Color', color, 'LineWidth', 2);
+    %plot(time_steps_signal(k), -0.5, [color, '|'], 'MarkerSize', 5);
 end
 for v = 1:num_vehicles
     plot(time_steps_vehicle, velocities(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
@@ -178,7 +179,8 @@ hold on;
 color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
 for k = 1:length(S)
     color = color_map(S(k));
-    plot(time_steps_signal(k), -1.6, [color, '.'], 'MarkerSize', 20);
+    line([time_steps_signal(k) time_steps_signal(k)], [-1.65 -1.6], 'Color', color, 'LineWidth', 2);
+    %plot(time_steps_signal(k), -1.6, [color, '|'], 'MarkerSize', 5);
 end
 for v = 1:num_vehicles
     plot(time_steps_vehicle, accelerations(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
@@ -195,7 +197,8 @@ hold on;
 color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
 for k = 1:length(S)
     color = color_map(S(k));
-    plot(time_steps_signal(k), 0.9, [color, '.'], 'MarkerSize', 20);
+    line([time_steps_signal(k) time_steps_signal(k)], [0.85 0.9], 'Color', color, 'LineWidth', 2);
+    %plot(time_steps_signal(k), 0.9, [color, '|'], 'MarkerSize', 5);
 end
 for v = 1:num_vehicles
     plot(time_steps_vehicle , decisions(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
@@ -282,7 +285,7 @@ figure('Position', [100, 100, 1200, 900]);
 subplot(2, 2, 1);
 hold on;
 stairs(time_steps_vehicle, c, 'b-', 'LineWidth', 2, 'DisplayName', 'True Count');
-stairs(time_steps_vehicle, c_tilde, 'r--', 'LineWidth', 2, 'DisplayName', 'Measured Count');
+stairs(time_steps_vehicle, c_tilde, 'r', 'LineWidth', 1, 'DisplayName', 'Measured Count');
 xlabel('Time (s)');
 ylabel('Vehicle Count');
 title('Vehicle Count Measurement');
@@ -293,7 +296,7 @@ grid on;
 subplot(2, 2, 2);
 hold on;
 stairs(time_steps_vehicle, o, 'b-', 'LineWidth', 2, 'DisplayName', 'True Presence');
-stairs(time_steps_vehicle, o_tilde, 'r--', 'LineWidth', 2, 'DisplayName', 'Measured Presence');
+stairs(time_steps_vehicle, o_tilde, 'r', 'LineWidth', 1, 'DisplayName', 'Measured Presence');
 xlabel('Time (s)');
 ylabel('Vehicle Presence');
 title('Vehicle Presence Measurement');
@@ -304,7 +307,7 @@ grid on;
 subplot(2, 2, 3);
 hold on;
 plot(time_steps_vehicle, v_avg, 'b-', 'LineWidth', 2, 'DisplayName', 'True Avg Velocity');
-plot(time_steps_vehicle, v_avg_tilde, 'r--', 'LineWidth', 2, 'DisplayName', 'Measured Avg Velocity');
+plot(time_steps_vehicle, v_avg_tilde, 'r', 'LineWidth', 1, 'DisplayName', 'Measured Avg Velocity');
 xlabel('Time (s)');
 ylabel('Average Velocity (m/s)');
 title('Average Velocity Measurement');
@@ -316,7 +319,7 @@ subplot(2, 2, 4);
 hold on;
 for v = 1:num_vehicles
     plot(time_steps_vehicle, positions(:, v), 'b-', 'LineWidth', 2, 'DisplayName', sprintf('True Position %d', v));
-    plot(time_steps_vehicle, d_tilde(v, :), 'r--', 'LineWidth', 2, 'DisplayName', sprintf('Measured Position %d', v));
+    plot(time_steps_vehicle, d_tilde(v, :), 'r', 'LineWidth', 1, 'DisplayName', sprintf('Measured Position %d', v));
 end
 xlabel('Time (s)');
 ylabel('Position (m)');
