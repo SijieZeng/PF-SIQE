@@ -19,7 +19,7 @@ function next_states = nextState(states, params)
     % params: a structure containing simulation parameters
     % Returns: next_states, a matrix of the same dimension as the input, representing the next state of all vehicles
     num_vehicles = size(states, 1);
-    next_states = zeros(size(states));
+    next_states = zeros(size(states, 1), 4);
     T = params.dt;  % time step
     
     assert(size(states, 1) == params.num_vehicles, 'Mismatch between states and params.num_vehicles');
@@ -48,7 +48,6 @@ function next_states = nextState(states, params)
     end
      status = true; % or false if any issues were encountered
 end 
-
 %% intelligent_driver_model
 
 function a_IDM_next = intelligent_driver_model(d, v, params)
@@ -121,7 +120,7 @@ function a_IDM_next = intelligent_driver_model(d, v, params)
             % Acceleration
             a_IDM = a_max * (1 - (v(i) / v_desired)^delta - (s_star / s(i))^2);
         end
-        % fprintf('Debug: Vehicle %d, d = %.2f, v = %.2f, delta_v = %.2f, s = %.2f\n', i, d(i), v(i), delta_v(i), s(i));
+        % 
         
         % Ensure acceleration is within reasonable bounds
         a_IDM_next(i) = max(min(a_IDM, a_max), -b);

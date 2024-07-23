@@ -163,7 +163,8 @@ end
         color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
         for k = 1:length(S)
             color = color_map(S(k));
-            plot(time_steps_signal(k), params.d_stop_line, [color, '.'], 'MarkerSize', 20);
+            line([time_steps_signal(k) time_steps_signal(k)], [params.d_stop_line params.d_stop_line + 5], 'Color', color, 'LineWidth', 2);
+            % plot(time_steps_signal(k), params.d_stop_line, [color, '.'], 'MarkerSize', 20);
         end
         % Plot particles
         for t = 1:num_iterations
@@ -285,7 +286,8 @@ end
     color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
     for k = 1:length(S)
         color = color_map(S(k));
-        plot(time_steps_signal(k), params.d_stop_line, [color, '.'], 'MarkerSize', 20);
+        line([time_steps_signal(k) time_steps_signal(k)], [params.d_stop_line params.d_stop_line + 5], 'Color', color, 'LineWidth', 2);
+        % plot(time_steps_signal(k), params.d_stop_line, [color, '.'], 'MarkerSize', 20);
     end
     for i = 1:num_vehicles
         plot(time_steps_vehicle, positions(:, i), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', i));
@@ -305,7 +307,8 @@ end
     color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
     for k = 1:length(S)
         color = color_map(S(k));
-        plot(time_steps_signal(k), -0.5, [color, '.'], 'MarkerSize', 20);
+        line([time_steps_signal(k) time_steps_signal(k)], [-0.7 -0.3], 'Color', color, 'LineWidth', 2);
+        % plot(time_steps_signal(k), -0.5, [color, '.'], 'MarkerSize', 20);
     end
     for v = 1:num_vehicles
         plot(time_steps_vehicle, velocities(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
@@ -322,7 +325,8 @@ end
     color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
     for k = 1:length(S)
         color = color_map(S(k));
-        plot(time_steps_signal(k), -1.6, [color, '.'], 'MarkerSize', 20);
+        line([time_steps_signal(k) time_steps_signal(k)], [-1.65 -1.6], 'Color', color, 'LineWidth', 2);
+        % plot(time_steps_signal(k), -1.6, [color, '.'], 'MarkerSize', 20);
     end
     for v = 1:num_vehicles
         plot(time_steps_vehicle, accelerations(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
@@ -339,7 +343,8 @@ end
     color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
     for k = 1:length(S)
         color = color_map(S(k));
-        plot(time_steps_signal(k), 0.9, [color, '.'], 'MarkerSize', 20);
+        line([time_steps_signal(k) time_steps_signal(k)], [0.85 0.9], 'Color', color, 'LineWidth', 2);
+        % plot(time_steps_signal(k), 0.9, [color, '.'], 'MarkerSize', 20);
     end
     for v = 1:num_vehicles
         plot(time_steps_vehicle , decisions(:, v), 'LineWidth', 2, 'DisplayName', sprintf('Vehicle %d', v));
@@ -385,3 +390,4 @@ end
     end
     
     close all;
+   

@@ -306,7 +306,7 @@ function p_G = GPS_probability(d_tilde, d, params)
     sigma_GPS = params.sigma_GPS;
 
     % Calculate the probability density using the normal distribution formula
-    p_G = (1 / (sqrt(2 * pi) * sigma_GPS)) * exp(-(d_tilde - d)^2 / (2 * sigma_GPS^2));
+    p_G = (1 ./ (sqrt(2 * pi) * sigma_GPS)) .* exp(-(d_tilde - d).^2 ./ (2 * sigma_GPS.^2));
 end
 %% measurement_probability
 

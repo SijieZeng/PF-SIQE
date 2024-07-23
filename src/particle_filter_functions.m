@@ -152,40 +152,42 @@ function particles = predict_particles(particles, params, ST)
 end
 %% update_weights
 
-function weights = update_weights(particles, measurements, params, Measurement)
+function weights = update_weights(particles, measurements, params, M)
     num_particles = size(particles, 1);
     num_vehicles = params.num_vehicles;
-    
-    weights = zeros(num_particles, 1);
-    for p = 1:num_particles
-        particle_state = squeeze(particles(p, :, :));
-        
-        % Count loop
-        c_actual = Measurement.count_loop(params, particle_state(:, 1), particle_state(:, 2));
-        c_measured = measurements.c_tilde;
-        p_c = Measurement.count_loop_probability(c_measured, c_actual);
-        
-        % Presence loop
-        o_actual = Measurement.presence_loop(params, particle_state(:, 1), particle_state(:, 2));
-        o_measured = measurements.o_tilde;
-        p_o = Measurement.presence_loop_probability(o_measured, o_actual, params);
-        
-        % Speed loop
-        v_avg_actual = Measurement.speed_loop(params, particle_state(:, 1), particle_state(:, 2));
-        v_avg_measured = measurements.v_avg_tilde;
-        p_v = Measurement.speed_loop_probability(v_avg_measured, v_avg_actual);
-        
-        % GPS measurement
-        d_actual = particle_state(:, 1);
-        d_measured = measurements.d_tilde;
-        p_d = Measurement.GPS_probability(d_measured, d_actual, params);
-        
-        % Joint probability
-        weights(p) = p_c * p_o * p_v * p_d;
+    weights = zeros(num_particles, num_vehicles);
+
+    for i = 1:num_vehicles
+        for j = 1:num_particles
+            particle_state = squeeze(particles(j, :, i));
+
+            % Count loop
+            c = M.count_loop(params, particle_state(1), particle_state(2));
+            c_tilde = measurements.c_tilde(i);
+            p_c = M.count_loop_probability_density(c_tilde, c);
+
+            % Presence loop
+            o = M.presence_loop(params, particle_state(1), particle_state(2));
+            o_tilde = measurements.o_tilde(i);
+            p_o = M.presence_loop_probability(o_tilde, o, params);
+
+            % Speed loop
+            v_avg = M.speed_loop(params, particle_state(1), particle_state(2));
+            v_avg_tilde = measurements.v_avg_tilde(i);
+            p_v = M.speed_loop_probability(v_avg_tilde, v_avg);
+
+            % GPS measurement
+            d = particle_state(1);
+            d_tilde = measurements.d_tilde(i);
+            p_G = M.GPS_probability(d_tilde, d, params);
+
+            % Joint probability
+            weights(j, i) = M.measurement_probability(c_tilde, c, o_tilde, o, v_avg_tilde, v_avg, d_tilde, d, params);
+        end
     end
-    
+
     % Normalize weights
-    weights = weights / sum(weights);
+    weights = weights ./ sum(weights, 1);
 end
 %% resampled_particles
 

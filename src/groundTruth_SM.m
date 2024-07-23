@@ -121,6 +121,7 @@ end
 
 % 创建一个新图形
 figure(1);
+hold on;
 figure('Position', [100, 100, 1200, 900]);  % Resize figure to fit subplot
 
 % 1. Vehicle location and traffic signal status
