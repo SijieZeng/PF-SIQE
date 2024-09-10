@@ -2,6 +2,7 @@ function PF = particle_filter_functions()
     PF.initialize_particles = @initialize_particles;
     PF.predict_particles = @predict_particles;
     PF.update_weights = @update_weights;
+    PF.logsumexp = @logsumexp;
     PF.resample_particles = @resample_particles;
     PF.state_estimations = @state_estimations;
     PF.queue_estimations = @queue_estimations;
@@ -89,128 +90,124 @@ function particles = predict_particles(particles, params, ST)
         error('Particle state dimension is less than 4. Expected at least 4 (d, v, a, D), got %d', state_dim);
     end
     
-    % Generate traffic signal states for all time steps (assuming this is done once)
+    % Generate traffic signal states for all time steps
     S = ST.generate_traffic_signal_states(params);
     
-    % Initialize T_elapsed (assuming this is done once)
+    % Initialize T_elapsed
     [~, T_elapsed_dt, ~, ~] = ST.update_elapsed_time(S, params);
-    
-    for j = 1:num_particles
-        % Get states of all vehicles for this particle
-        if num_vehicles == 1
-            all_vehicle_states = squeeze(particles(j, 1, :))';
-        else
-            all_vehicle_states = squeeze(particles(j, :, :));
-        end
+    T_elapsed_dt = T_elapsed_dt(1, :);  % Only keep current time step
+
+    % Vectorize operations
+    d = particles(:, :, 1);
+    v = particles(:, :, 2);
+    D = particles(:, :, 4);
+
+    % Calculate next states for each particle separately
+    d_next = zeros(num_particles, num_vehicles);
+    v_next = zeros(num_particles, num_vehicles);
+    a_next = zeros(num_particles, num_vehicles);
+    D_next = zeros(num_particles, num_vehicles);
+
+    for i = 1:num_particles
+        current_state = squeeze(particles(i, :, :))';  % Transpose to make it [num_vehicles x state_dim]
+        next_state = ST.nextState(current_state, params);
+        d_next(i, :) = next_state(:, 1)';
+        v_next(i, :) = next_state(:, 2)';
         
-        % If there's only one vehicle, ensure all_vehicle_states is a column vector
-        %if num_vehicles == 1
-            %all_vehicle_states = all_vehicle_states(:);
-        %end
-        
-        % Extract d, v, and D from all_vehicle_states
-        d = all_vehicle_states(:, 1)';
-        v = all_vehicle_states(:, 2)';
-        a = all_vehicle_states(:, 3)';
-        D = all_vehicle_states(:, 4)';
-        
-        % Convert all_vehicle_states to matrix format
-        states_matrix = [all_vehicle_states(:, 1:4), ones(num_vehicles, 1)];
-        
-        % Call nextState with the matrix format
-        next_states_matrix = ST.nextState(states_matrix, params);
-        
-        % Extract d_next and v_next
-        d_next = next_states_matrix(:, 1)';
-        v_next = next_states_matrix(:, 2)';
-        
-        % Calculate a_IDM_next
-        a_IDM_next = ST.intelligent_driver_model(d, v, params);
-        
-        % Calculate T_elapsed_next
+        % Calculate a_IDM_next, D_next, a_decision_next, and a_next for this particle
+        a_IDM_next = ST.intelligent_driver_model(d(i, :), v(i, :), params);
         [~, T_elapsed_next_dt] = ST.calculate_T_elapsed_next(T_elapsed_dt, params);
-        
-        % Ensure T_elapsed_next_dt length is correct
-        if length(T_elapsed_next_dt) ~= num_vehicles
-            T_elapsed_next_dt = zeros(1, num_vehicles);
-        end
-        
-        % Calculate D_next (assuming we're at step 1 for simplicity)
-        D_next = ST.decision_making(d, d_next, v, v_next, S{1}, S{2}, T_elapsed_dt, T_elapsed_next_dt, D, params);
-        
-        % Calculate a_decision_next
-        a_decision_next = ST.traffic_light_decision_model(D, v, d, params);
-        
-        % Calculate a_next
-        a_next = ST.acceleration_next(a_IDM_next, a_decision_next, v, params);
-        
-        % Update particles with new states
-        for i = 1:num_vehicles
-            particles(j, i, :) = [d_next(i), v_next(i), a_next(i), D_next(i)];
-        end
+        D_next(i, :) = ST.decision_making(d(i, :), d_next(i, :), v(i, :), v_next(i, :), S{1}, S{2}, T_elapsed_dt, T_elapsed_next_dt, D(i, :), params);
+        a_decision_next = ST.traffic_light_decision_model(D(i, :), v(i, :), d(i, :), params);
+        a_next(i, :) = ST.acceleration_next(a_IDM_next, a_decision_next, v(i, :), params);
     end
+    
+    % Update particles
+    particles(:, :, 1) = d_next;
+    particles(:, :, 2) = v_next;
+    particles(:, :, 3) = a_next;
+    particles(:, :, 4) = D_next;
 end
+
 %% update_weights
 
-function weights = update_weights(particles, measurements, params, M)
+function log_weights = update_weights(particles, measurement, params, M)
     num_particles = size(particles, 1);
     num_vehicles = params.num_vehicles;
-    weights = zeros(num_particles, num_vehicles);
+    log_weights = zeros(num_particles, num_vehicles);
 
     for i = 1:num_vehicles
-        for j = 1:num_particles
-            particle_state = squeeze(particles(j, :, i));
+        d = particles(:, i, 1);
+        v = particles(:, i, 2);
 
-            % Count loop
-            c = M.count_loop(params, particle_state(1), particle_state(2));
-            c_tilde = measurements.c_tilde(i);
-            p_c = M.count_loop_probability_density(c_tilde, c);
+        c = M.count_loop(params, d, v);
+        o = M.presence_loop(params, d, v);
+        v_avg = M.speed_loop(params, d, v);
 
-            % Presence loop
-            o = M.presence_loop(params, particle_state(1), particle_state(2));
-            o_tilde = measurements.o_tilde(i);
-            p_o = M.presence_loop_probability(o_tilde, o, params);
+        log_weights(:, i) = 0;  % Initialize log weights
 
-            % Speed loop
-            v_avg = M.speed_loop(params, particle_state(1), particle_state(2));
-            v_avg_tilde = measurements.v_avg_tilde(i);
-            p_v = M.speed_loop_probability(v_avg_tilde, v_avg);
-
-            % GPS measurement
-            d = particle_state(1);
-            d_tilde = measurements.d_tilde(i);
-            p_G = M.GPS_probability(d_tilde, d, params);
-
-            % Joint probability
-            weights(j, i) = M.measurement_probability(c_tilde, c, o_tilde, o, v_avg_tilde, v_avg, d_tilde, d, params);
+        if isfield(measurement, 'c_tilde')
+            log_weights(:, i) = log_weights(:, i) + log(M.count_loop_probability_density(measurement.c_tilde, c));
+        end
+        if isfield(measurement, 'o_tilde')
+            log_weights(:, i) = log_weights(:, i) + log(M.presence_loop_probability(measurement.o_tilde, o, params));
+        end
+        if isfield(measurement, 'v_avg_tilde')
+            log_weights(:, i) = log_weights(:, i) + log(M.speed_loop_probability(measurement.v_avg_tilde, v_avg));
+        end
+        if isfield(measurement, 'd_tilde')
+            log_weights(:, i) = log_weights(:, i) + log(M.GPS_probability(measurement.d_tilde(i), d, params));
         end
     end
 
-    % Normalize weights
-    weights = weights ./ sum(weights, 1);
+    % Normalize log weights
+    log_weights = log_weights - logsumexp(log_weights, 1);
+end
+%% logsumexp
+
+function s = logsumexp(x, dim)
+    % Compute log(sum(exp(x), dim)) while avoiding numerical underflow.
+    % By default dim = 1 (columns).
+    if nargin == 1
+        % Determine which dimension sum will use
+        dim = find(size(x)~=1, 1);
+        if isempty(dim), dim = 1; end
+    end
+
+    % Subtract the largest in each column
+    y = max(x, [], dim);
+    x = bsxfun(@minus, x, y);
+    s = y + log(sum(exp(x), dim));
+    i = find(~isfinite(y));
+    if ~isempty(i)
+        s(i) = y(i);
+    end
 end
 %% resampled_particles
 
-function resampled_particles = resample_particles(particles, weights)
-    num_particles = size(particles, 1);
-    num_vehicles = size(particles, 2);
-    state_dim = size(particles, 3);
+function resampled_particles = resample_particles(particles, log_weights)
+    [num_particles, num_vehicles, state_dim] = size(particles);
     
-    cumulative_sum = cumsum(weights);
+    weights = exp(log_weights - max(log_weights, [], 1));  % Convert back to linear scale
+    weights = weights ./ sum(weights, 1);
+    
     resampled_particles = zeros(num_particles, num_vehicles, state_dim);
     
-    for p = 1:num_particles
-        random_value = rand();
-        index = find(cumulative_sum >= random_value, 1);
-        resampled_particles(p, :, :) = particles(index, :, :);
+    for v = 1:num_vehicles
+        cumulative_sum = cumsum(weights(:, v));
+        u = (0:num_particles-1)' / num_particles + rand() / num_particles;
+        [~, indices] = histc(u, [0; cumulative_sum]);
+        resampled_particles(:, v, :) = particles(indices, v, :);
     end
 end
 %% estimated_state
 
-function estimated_state = state_estimations(particles)
-    % Estimate the state by averaging over all particles
-    estimated_state = mean(particles, 1);
+function estimated_state = state_estimations(particles, weights)
+    % Estimate the state by calculating the weighted average of particles
+    normalized_weights = weights / sum(weights);
+    estimated_state = sum(bsxfun(@times, particles, normalized_weights'), 1);
 end
+%% 
 
 function queue_length = queue_estimations(estimated_state, params)
     % Estimate the queue length based on the estimated state

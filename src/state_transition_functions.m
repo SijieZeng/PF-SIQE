@@ -186,9 +186,12 @@ function [T_elapsed_delta_t, T_elapsed_dt, yellow_start_delta_t, yellow_start_dt
     % 预分配 yellow_start_delta_t
     yellow_start_delta_t = zeros(1, ceil(num_iterations / (yellow_time / delta_t)));
     yellow_count = 0;
-    
-    for k = 2:num_iterations
-        if S(k) == "yellow" && S(k-1) ~= "yellow"
+
+    % 修改这里：从第一个元素开始检查，并使用 circshift 来比较前一个状态
+    prev_S = circshift(S, 1);
+    prev_S(1) = S(1);  % 确保第一个元素的"前一个状态"就是它自己
+    for k = 1:num_iterations
+        if S(k) == "yellow" && prev_S(k) ~= "yellow"
             yellow_count = yellow_count + 1;
             yellow_start_delta_t(yellow_count) = k;
         end

@@ -16,7 +16,7 @@ params = struct();
 % Simulation parameters
 params.dt = 1;  % time step (s)
 params.num_iterations = 40; % Number of time steps
-params.num_vehicles = 2; % Number of vehicles 
+params.num_vehicles = 1; % Number of vehicles 
 params.num_particles = 5;
 % generate_traffic_signal_states
 params.red_time = 8;   % Red light duration (s)
@@ -94,7 +94,7 @@ end
 S = ST.generate_traffic_signal_states(params);
 
 % Run simulation
-[all_states, all_signals] = simulate1(initial_states, params);
+[all_states, ~] = simulate1(initial_states, params);
 %% generate ground truth states, plotting
 
 % Prepare data for plotting
@@ -231,7 +231,7 @@ save_choice = input('Do you want to save the figure? (y/n): ', 's');
 if strcmpi(save_choice, 'y')
     % Create a folder to save the results
     current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
-    folder_path = fullfile('C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\results\groundTruth_SM', char(current_time));
+    folder_path = fullfile('C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\1111', char(current_time));
     mkdir(folder_path);
     
     % Save the drawing
@@ -244,7 +244,6 @@ else
     disp('Figure was not saved.');
 end
 
-close all;
 %% plotting ground truth measurements
 % ... [Keep all the existing code up to the plotting section] ...
 
@@ -312,7 +311,7 @@ plot(time_steps_vehicle, v_avg_tilde, 'r', 'LineWidth', 1, 'DisplayName', 'Measu
 xlabel('Time (s)');
 ylabel('Average Velocity (m/s)');
 title('Average Velocity Measurement');
-legend('Location', 'best');
+legend('Location', 'best'); 
 grid on;
 
 % 4. GPS position measurement
@@ -351,5 +350,107 @@ if strcmpi(save_choice, 'y')
 else
     disp('Measurements figure was not saved.');
 end
+%% %% Validate decision making model (single vehicle)
 
+PLOT = plotting_functions();
+params.num_vehicles = 1;
+params.num_particles = 5;
+
+% Generate ground truth
+[ground_truth_states, all_signals] = PLOT.generate_ground_truth(params, ST, PF);
+
+% Generate measurements
+M = measurement_functions();
+ground_truth_measurements = PLOT.generate_measurements;
+disp(size(ground_truth_measurements));
+
+% Initialize particles
+init_bounds = [0, params.D_h;
+               params.v_desired - 1, params.v_desired;
+               -params.b_max, params.a_max;
+               1, 3];
+particles = PF.initialize_particles(init_bounds, params);
+
+disp('Checking variables before calling run_particle_filter:');
+disp(['particles: ', num2str(size(particles))]);
+disp(['ground_truth_measurements: ', num2str(size(ground_truth_measurements))]);
+disp(['all_signals: ', num2str(size(all_signals))]);
+disp(['params: ', num2str(length(fieldnames(params)))]);
+disp('PF, ST, M structures exist');
+
+% Run particle filter
+[estimated_states, particle_trajectories, weights] = PLOT.run_particle_filter(particles, ground_truth_measurements, all_signals, params, PF, ST, M);
+
+
+% Calculate MAE
+mae = PLOT.calculate_mae(estimated_states, ground_truth_states);
+if isnumeric(mae)
+    disp(['Mean Absolute Error: ', num2str(mae)]);
+else
+    disp('Error: MAE calculation did not return a numeric value');
+    disp(['MAE type: ', class(mae)]);
+    disp('MAE value:');
+    disp(mae);
+end
+
+figure(3);
+figure('Position', [100, 100, 1200, 900]);
+state_names = {'Position', 'Velocity', 'Acceleration', 'Decision'};
+
+for i = 1:4
+    subplot(2, 2, i);
+    hold on;
+    
+    % 1. Plot ground truth in green
+    plot(1:params.num_iterations, squeeze(ground_truth_states(:, 1, i)), 'g-', 'LineWidth', 2, 'DisplayName', 'Ground Truth');
+    
+    % 2 & 4. Plot all particle trajectories with weight-based thickness
+    for j = 1:params.num_particles
+        % Calculate the average weight for this particle
+        avg_weight = mean(weights(:, j));
+        % Normalize the weight to get a reasonable line width
+        line_width = 0.1 + 5 * avg_weight / max(mean(weights, 1));
+        plot(1:params.num_iterations, squeeze(particle_trajectories(:, j, 1, i)), 'Color', [0.3, 0.3, 0.3, 0.3], 'LineWidth', line_width);
+    end
+    
+    % 3. Plot weighted estimated trajectory in blue
+    plot(1:params.num_iterations, squeeze(estimated_states(:, 1, i)), 'b-', 'LineWidth', 2, 'DisplayName', 'Estimated');
+    
+    title(state_names{i});
+    xlabel('Time step');
+    ylabel(state_names{i});
+    legend('Location', 'best');
+    grid on;
+    
+    % Add traffic signal information
+    if i == 1  % Only add to position plot
+        color_map = containers.Map({'red', 'yellow', 'green'}, {'r', 'y', 'g'});
+        for t = 1:params.num_iterations
+            color = color_map(all_signals{t});
+            plot(t, params.d_stop_line, [color, '.'], 'MarkerSize', 10);
+        end
+        yline(params.d_loop1, 'r--', 'LineWidth', 1, 'DisplayName', 'Vehicle Count Loop');
+    end
+end
+
+sgtitle('Decision Making Model Validation (Single Vehicle)', 'FontSize', 16);
+
+% Ask the user whether to save the graphic
+save_choice = input('Do you want to save the figure? (y/n): ', 's');
+if strcmpi(save_choice, 'y')
+    % Create a folder to save the results
+    current_time = datetime('now', 'Format', 'yyyy-MM-dd_HH-mm-ss');
+    folder_path = fullfile('C:\Users\Sijie\Documents\MATLAB\ParticleFilter-simple-case\1111', char(current_time));
+    mkdir(folder_path);
+    
+    % Save the drawing
+    saveas(gcf, fullfile(folder_path, 'Decision Making Model.fig'));
+    saveas(gcf, fullfile(folder_path, 'Decision Making Model.eps'));
+    saveas(gcf, fullfile(folder_path, 'Decision Making Model.png'));
+    
+    disp(['The figure has been saved in the folder: ' folder_path]);
+else
+    disp('Figure was not saved.');
+end
 close all;
+
