@@ -20,7 +20,7 @@ function next_states = nextState(states, params)
     % Returns: next_states, a matrix of the same dimension as the input, representing the next state of all vehicles
     num_vehicles = size(states, 1);
     next_states = zeros(size(states, 1), 4);
-    T = params.dt;  % time step
+    T = params.dt;  % time step 
     
     assert(size(states, 1) == params.num_vehicles, 'Mismatch between states and params.num_vehicles');
 
@@ -43,10 +43,20 @@ function next_states = nextState(states, params)
         if isnan(d_next) || isnan(v_next) || isinf(d_next) || isinf(v_next)
             error('Invalid state detected. d: %f, v: %f', d_next, v_next);
         end
+        % Additional checks
+        if d_next < d
+            warning('Vehicle %d moving backwards: d=%.2f, d_next=%.2f', i, d, d_next);
+        end
+        if v_next < 0
+            warning('Vehicle %d has negative speed: v_next=%.2f', i, v_next);
+        end
+        
+        % Debug output
+        fprintf('Vehicle %d: d=%.2f, d_next=%.2f, v=%.2f, v_next=%.2f, a=%.2f, D=%s\n', ...
+                i, d, d_next, v, v_next, a, D);
 
         next_states(i, :) = [d_next, v_next, a, D];
     end
-     status = true; % or false if any issues were encountered
 end 
 %% intelligent_driver_model
 
@@ -148,20 +158,24 @@ function a_IDM_next = intelligent_driver_model(d, v, params)
 end
 %% generate_traffic_signal_states
 
-function S = generate_traffic_signal_states(params)
-    num_iterations = params.num_iterations * 2;
-    red_time = params.red_time;   
-    yellow_time = params.yellow_time; 
-    green_time = params.green_time; 
-    delta_t  = params.delta_t;
-
+function [S, S_next] = generate_traffic_signal_states(params)
+    num_iterations = params.num_iterations;
+    red_time = params.red_time;
+    yellow_time = params.yellow_time;
+    green_time = params.green_time;
+    dt = params.dt;
+    
     S = strings(num_iterations, 1);
+    S_next = strings(num_iterations, 1);
     cycle_length = red_time + yellow_time + green_time;
-
+    
     for k = 1:num_iterations
-        time = (k - 1) * delta_t;
+        time = (k - 1) * dt;
+        next_time = k * dt;
         cycle_position = mod(time, cycle_length);
-
+        next_cycle_position = mod(next_time, cycle_length);
+        
+        % Determine current state
         if cycle_position < green_time
             S(k) = "green";
         elseif cycle_position < green_time + yellow_time
@@ -169,75 +183,78 @@ function S = generate_traffic_signal_states(params)
         else
             S(k) = "red";
         end
+        
+        % Determine next state
+        if next_cycle_position < green_time
+            S_next(k) = "green";
+        elseif next_cycle_position < green_time + yellow_time
+            S_next(k) = "yellow";
+        else
+            S_next(k) = "red";
+        end
     end
 end
 %% update_elapsed_time
 
-function [T_elapsed_delta_t, T_elapsed_dt, yellow_start_delta_t, yellow_start_dt] = update_elapsed_time(S, params)
+function [T_elapsed_dt, yellow_start_dt] = update_elapsed_time(S, params)
+    % 从参数结构体中提取所需参数
     num_iterations = params.num_iterations;
     num_vehicles = params.num_vehicles;
     yellow_time = params.yellow_time;
-    delta_t = params.delta_t;
     dt = params.dt;
-    steps_per_dt = dt / delta_t;
-    T_elapsed_delta_t = zeros(num_iterations, num_vehicles);
-    T_elapsed_dt = zeros(ceil(num_iterations/steps_per_dt), num_vehicles);
-    
-    % 预分配 yellow_start_delta_t
-    yellow_start_delta_t = zeros(1, ceil(num_iterations / (yellow_time / delta_t)));
-    yellow_count = 0;
 
-    % 修改这里：从第一个元素开始检查，并使用 circshift 来比较前一个状态
-    prev_S = circshift(S, 1);
-    prev_S(1) = S(1);  % 确保第一个元素的"前一个状态"就是它自己
-    for k = 1:num_iterations
-        if S(k) == "yellow" && prev_S(k) ~= "yellow"
-            yellow_count = yellow_count + 1;
-            yellow_start_delta_t(yellow_count) = k;
-        end
+    % 检查 S 是否为空
+    if isempty(S)
+        T_elapsed_dt = zeros(num_iterations, num_vehicles);
+        yellow_start_dt = [];
+        return;
     end
-    
-    % 裁剪 yellow_start_delta_t 到实际大小
-    yellow_start_delta_t = yellow_start_delta_t(1:yellow_count);
 
-    % 计算T_elapsed_delta_t
-    for k = 1:num_iterations
-        if S(k) == "yellow"
-            yellow_start = max(yellow_start_delta_t(yellow_start_delta_t <= k));
-            elapsed = (k - yellow_start) * delta_t;
-            remaining_time = yellow_time - elapsed;
-            T_elapsed_delta_t(k, :) = max(round(remaining_time * 2) / 2, 0);
-        else
-            T_elapsed_delta_t(k, :) = 0;
-        end
-    end
+    % 使用 S 的实际长度，而不是 num_iterations
+    actual_iterations = length(S);
+
+    % 初始化输出数组
+    T_elapsed_dt = zeros(actual_iterations, num_vehicles);
+    yellow_start_dt = zeros(1, ceil(actual_iterations * dt / yellow_time));
+
+    % 使用逻辑索引找出黄灯开始时间
+    is_yellow = cellfun(@(x) strcmp(x, 'yellow'), S);
+    yellow_starts = find(is_yellow & [false; is_yellow(1:end-1) == 0]);
+    yellow_count = length(yellow_starts);
+    yellow_start_dt(1:yellow_count) = yellow_starts * dt; % 转换为实际时间
 
     % 计算T_elapsed_dt
-    for k = 1:steps_per_dt:num_iterations
-        dt_index = ceil(k / steps_per_dt);
-        T_elapsed_dt(dt_index, :) = T_elapsed_delta_t(k, :);
+    for k = 1:actual_iterations
+        if is_yellow(k)
+            yellow_start = max(yellow_start_dt(yellow_start_dt <= k*dt));
+            elapsed = (k*dt - yellow_start);
+            remaining_time = yellow_time - elapsed;
+            T_elapsed_dt(k, :) = max(remaining_time, 0);
+        else
+            T_elapsed_dt(k, :) = 0;
+        end
     end
 
-    % 计算黄灯开始的dt时间
-    yellow_start_dt = ceil(yellow_start_delta_t / steps_per_dt);
+    % 将yellow_start_dt裁剪到实际大小
+    yellow_start_dt = yellow_start_dt(1:yellow_count);
+
+    % 如果需要，将 T_elapsed_dt 填充到 num_iterations 长度
+    if actual_iterations < num_iterations
+        T_elapsed_dt(actual_iterations+1:num_iterations, :) = 0;
+    elseif actual_iterations > num_iterations
+        T_elapsed_dt = T_elapsed_dt(1:num_iterations, :);
+    end
 end
 %% calculate_T_elapsed_next
 
-function [T_elapsed_next_delta_t, T_elapsed_next_dt] = calculate_T_elapsed_next(T_elapsed, params)
-    delta_t = params.delta_t;
-    dt = params.dt;
-    steps_per_dt = dt / delta_t;
-    num_vehicles = size(T_elapsed, 2);
-    num_iterations = size(T_elapsed, 1) - 1;
-
-    % Calculate T_elapsed_next_delta_t directly
-    T_elapsed_next_delta_t = T_elapsed(2:end, :);
-
-    % Initialize and calculate T_elapsed_next_dt
-    T_elapsed_next_dt = zeros(ceil(num_iterations / steps_per_dt), num_vehicles);
-    for k = 1:ceil(num_iterations / steps_per_dt)
-        T_elapsed_next_dt(k, :) = T_elapsed(min(k*steps_per_dt + 1, size(T_elapsed, 1)), :);
-    end
+function [T_elapsed_next_dt] = calculate_T_elapsed_next(T_elapsed_dt)
+    
+    
+    % 计算下一个时间步的T_elapsed_next_dt
+    T_elapsed_next_dt = T_elapsed_dt(2:end, :);
+    
+    % 为最后一行添加一个全零行，以保持维度一致
+    T_elapsed_next_dt(end+1, :) = zeros(1, size(T_elapsed_dt, 2));
 end
 %% decision_making
 
@@ -268,6 +285,9 @@ function D_next = decision_making(d, d_next, v, v_next, S, S_next, T_elapsed_dt,
     p = params.p_stop;
     d_0 = params.d_0;
 
+    
+    a_next = zeros(1, params.num_iterations);
+    
      % Initialize output
     D_next = repmat(params.D_undecided, 1, num_vehicles);
 
@@ -277,42 +297,50 @@ function D_next = decision_making(d, d_next, v, v_next, S, S_next, T_elapsed_dt,
             D_next(i) = params.D_undecided; % D_undecided
             continue;  % Move to the next vehicle
         end
-
         % Step 2: Check if the vehicle is between decision horizon and stop line
+
+        if S_next == "red" && d_next(i) <= d_stop_line
+            D_next(i) = params.D_stop;
+            continue;  % Skip the rest of the loop for this vehicle
+        end
         if D_h < d_next(i) && d_next(i) <= d_stop_line
+            % For red light, always prepare to stop
             if S_next == "red"
-                D_next(i) = params.D_stop; % D_stop
+                D_next(i) = params.D_stop; 
+                % Calculate deceleration needed to stop at the stop line
+                a_next(i) = -v_next(i)^2 / (2 * (d_next(i) - d_stop_line));
+                % Ensure the deceleration doesn't exceed maximum braking
+                a_next(i) = max(a_next(i), -params.b_max);
             elseif S_next == "green"
                 D_next(i) = params.D_go; % D_go
             elseif S_next == "yellow"
                 d_a_next = T_reaction * v_next(i) + (v_next(i)^2) / (2 * b);
-                d_b_next = (T_yellow - T_elapsed_next_dt(i)) * v_next(i);
-
+                d_b_next = (T_yellow - T_elapsed_next_dt(i)) * v_next(i);    
+              
                 if d_next(i) <= d_b_next
                     D_next(i) = params.D_stop; % D_stop
                 elseif d_a_next <= d_next(i) 
-                    D_next(i) = params.D_go; % D_go
-                else % d_b_next < d_next(i) && d_next(i) < d_a_next
-                    if D(i) == params.D_undecided % D_undecided
+                    D_next(i) = params.D_go; % D_go 
+                elseif d_b_next < d_next(i) && d_next(i) < d_a_next
+                    % calculate boundaries at time step k
+                    d_b = (T_yellow - T_elapsed_dt(i)) * v(i);
+                    d_a = T_reaction * v(i) + (v(i)^2) / (2 * b);
+
+                    if (d_a <= d(i) && d(i) <= d_b) && S(i) == "yellow" || D(i) == params.D_undecided % D_undecided
                         r = rand();
                         if r < p
                             D_next(i) = params.D_stop; % D_stop
                         else
                             D_next(i) = params.D_go; % D_go
                         end
-                    else
-                        D_next(i) = D(i);
                     end
                 end
             end
-            continue;
-        end
-
-        % Step 3: If the vehicle is past the stop line
-        if d_next(i) > d_stop_line
+        elseif d_next(i) > d_stop_line  % Step 3: If the vehicle is past the stop line
             D_next(i) = params.D_go;
-            continue;  % Move to the next vehicle
-        end
+        else
+            D_next(i) = params.D_undecided;
+        end  
 
         % Step 4: Maintain previous decision if already made during yellow light
         if S == "yellow" && S_next == "yellow" && D(i) ~= params.D_undecided
@@ -325,11 +353,18 @@ function D_next = decision_making(d, d_next, v, v_next, S, S_next, T_elapsed_dt,
                 D_next(i) = D(i);
             end
         end
+        if S_next == "red" && d_next(i) <= d_stop_line
+            D_next(i) = params.D_stop;
+        end
+        fprintf('Vehicle %d: S: %s, S_next: %s, d: %.2f, d_next: %.2f, D: %s, D_next: %s\n', ...
+        i, S, S_next, d(i), d_next(i), D(i), D_next(i));
     end
 end
+  
+
 %% traffic_light_decision_model
 
-function a_decision_next = traffic_light_decision_model(D, v, d, params)
+function a_decision_next = traffic_light_decision_model(D, v, d, S, params)
     % Input:
     % D: Current decision (D_stop, D_go, or D_undecided)
     % v: Current velocity
@@ -357,9 +392,12 @@ function a_decision_next = traffic_light_decision_model(D, v, d, params)
 % Determine a_decision_next based on the current decision and conditions
 % for each vehicle
     for i = 1:num_vehicles
+        if D(i) == params.D_stop && d(i) <= d_stop_line
+            a_decision_next(i) = max(a_decision_next(i), -b);
+        end
         if D(i) == params.D_stop
             if v(i) > 0
-                C_s = max(1, 2 * (d_stop_line - d(i)) / (v(i) * T_discrete));
+                C_s = max(1, floor(2 * (d_stop_line - d(i)) / (v(i) * T_discrete)));
                 a_decision_next(i) = -v(i) / (C_s * T_discrete);
             else
                 a_decision_next(i) = 0; % Vehicle is already stopped
@@ -371,11 +409,20 @@ function a_decision_next = traffic_light_decision_model(D, v, d, params)
                 a_decision_next(i) = a_prime * (1 - (v(i) / v_desired)^2);
             end
         else
-            error('Invalid decision state for vehicle %d', i);
+            %error('Invalid decision state for vehicle %d', i);
         end
     
         % Ensure acceleration is within reasonable bounds
         a_decision_next(i) = max(min(a_decision_next(i), a_max), -b);
+
+        % Safety check for red light
+        if S(i) == "red" && d(i) <= params.d_stop_line
+            a_decision_next(i) = max(a_decision_next(i), -params.b);
+        end
+        
+        % Debug output
+        %fprintf('Vehicle %d: D: %s, v: %.2f, d: %.2f, S: %s, a_decision_next: %.2f\n', ...
+                %i, D(i), v(i), d(i), S(i), a_decision_next(i));
     end
 end
 %% acceleration_next_no_noise
@@ -398,33 +445,27 @@ function a_next_no_noise = acceleration_next_no_noise(a_IDM_next, a_decision_nex
     end
 end
 %% acceleration_next
-
 function a_next = acceleration_next(a_IDM_next, a_decision_next, v, params)
-
-    n_a = params.n_a;
-    num_vehicles = params.num_vehicles;
-    b = params.b;
-    a_max = params.a_max;
-    dt = params.dt;
-
+     n_a = params.n_a;
+     num_vehicles = params.num_vehicles;
+     b = params.b;
+     a_max = params.a_max;
+    % dt = params.dt;
     % Input validation
-    if length(a_IDM_next) ~= num_vehicles || length(a_decision_next) ~= num_vehicles || length(v) ~= num_vehicles 
+    if length(a_IDM_next) ~= num_vehicles || length(a_decision_next) ~= num_vehicles || length(v) ~= num_vehicles
         error('Input vectors must have the same length as num_vehicles');
     end
-
     % Initialize output vector
-    a_next = zeros(1, num_vehicles);
-
+     a_next = zeros(1, num_vehicles);
     for i = 1:num_vehicles
-        left_bound = -n_a * v(i) / dt;
-        right_bound = n_a;
-        range_width = right_bound - left_bound;
-        noise = (rand * range_width) + left_bound; % [-n_a * v(i) / dt, n_a]
+         left_bound = -n_a * v(i) ;
+         right_bound = n_a;
+         range_width = right_bound - left_bound;
+         noise = (rand * range_width) + left_bound; % [-n_a * v(i) / dt, n_a]
         % Calculate next acceleration
-        a_next(i) = min(a_IDM_next(i), a_decision_next(i)) + noise;
-
+         a_next(i) = min(a_IDM_next(i), a_decision_next(i)) + noise;
         % Ensure acceleration is within bounds
-        a_next(i) = max(min(a_next(i), a_max), -b);
+         a_next(i) = max(min(a_next(i), a_max), -b);
     end
 end
 %% acceleration_probability
